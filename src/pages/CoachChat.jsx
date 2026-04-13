@@ -283,6 +283,7 @@ export default function CoachChat() {
     e.stopPropagation();
     if (!confirm("Delete this chat?")) return;
     try {
+      setStarters([]);
       await base44.agents.deleteConversation(id);
       setConvs(p => p.filter(c => c.id !== id));
       if (active?.id === id) {
@@ -457,6 +458,7 @@ export default function CoachChat() {
   // ── Background insight extraction & signal detection ─────────────────
 
   async function extractInsightsInBackground(userMessage, conv, sentCount, ctx) {
+    if (!conv?.id) return; // Guard: conv must exist
     const lm = userMessage.toLowerCase();
 
     const injuryKw    = ["pain","hurt","sore","knee","hamstring","shoulder","ankle","hip","injury","injured","strain","sprain"];
@@ -469,14 +471,18 @@ export default function CoachChat() {
     const hasSignal   = hasInjury || hasFatigue || hasDisrupt;
 
     if (hasSignal) {
-      // Update athlete insights
-      const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
-      if (profiles?.[0]) {
-        const existing = profiles[0].extracted_insights || "";
-        const updated  = await base44.integrations.Core.InvokeLLM({
-          prompt: `Athlete said: "${userMessage}"\nExisting insights: ${existing}\nAdd any new health/injury/fatigue signal (1–2 sentences, only if genuinely new). Return complete updated insights string.`,
-        });
-        if (updated) await base44.entities.AthleteProfile.update(profiles[0].id, { extracted_insights: updated });
+      try {
+        // Update athlete insights
+        const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
+        if (profiles?.[0]) {
+          const existing = profiles[0].extracted_insights || "";
+          const updated  = await base44.integrations.Core.InvokeLLM({
+            prompt: `Athlete said: "${userMessage}"\nExisting insights: ${existing}\nAdd any new health/injury/fatigue signal (1–2 sentences, only if genuinely new). Return complete updated insights string.`,
+          });
+          if (updated) await base44.entities.AthleteProfile.update(profiles[0].id, { extracted_insights: updated });
+        }
+      } catch (e) {
+        console.error("Signal detection insight update failed (non-critical):", e);
       }
 
       // Build proposed changes WITHOUT applying them
@@ -567,17 +573,18 @@ export default function CoachChat() {
       }
     }
 
-    // Every 5 messages: extract general coaching insights
-    if (sentCount % 5 === 0) {
+    // Every 5 messages: extract general coaching insights (with stricter guards)
+    if (sentCount % 5 === 0 && sentCount >= 5) {
       try {
         const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
-        if (!profiles?.[0]) return;
+        if (!profiles?.[0] || !active?.id) return; // Extra guards
         const convData = await base44.agents.getConversation(conv.id);
         const recentMsgs = (convData.messages || [])
           .filter(m => m.role !== "system")
           .slice(-10)
           .map(m => `${m.role}: ${typeof m.content === "string" ? m.content.substring(0, 300) : ""}`)
           .join("\n");
+        if (!recentMsgs.trim()) return; // Skip if no recent messages
         const existing = profiles[0].extracted_insights || "";
         const updated  = await base44.integrations.Core.InvokeLLM({
           prompt: `Review this coach-athlete conversation and extract any NEW durable coaching insights:\n\n${recentMsgs}\n\nExisting notes: ${existing || "None"}\n\nOnly add genuinely new info: preferences, patterns, mental state, training response, lifestyle. If nothing new, return existing unchanged. 2–5 sentences max. Return complete updated string.`,
@@ -585,7 +592,9 @@ export default function CoachChat() {
         if (updated && updated !== existing) {
           await base44.entities.AthleteProfile.update(profiles[0].id, { extracted_insights: updated });
         }
-      } catch {}
+      } catch (e) {
+        console.error("Periodic insight extraction failed:", e);
+      }
     }
   }
 
