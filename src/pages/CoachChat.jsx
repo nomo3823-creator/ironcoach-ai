@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Send, Loader2, Zap, Plus, MessageSquare,
-  CheckCircle2, XCircle, AlertTriangle,
+  CheckCircle2, XCircle, AlertTriangle, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MessageBubble from "../components/chat/MessageBubble";
@@ -235,6 +235,22 @@ export default function CoachChat() {
     const data = await base44.agents.listConversations({ agent_name: "iron_coach" });
     setConvs(data || []);
     setLoadingConvs(false);
+  }
+
+  async function deleteConv(id, e) {
+    e.stopPropagation();
+    if (!confirm("Delete this chat?")) return;
+    try {
+      await base44.agents.deleteConversation(id);
+      setConvs(p => p.filter(c => c.id !== id));
+      if (active?.id === id) {
+        setActive(null);
+        setMessages([]);
+      }
+      toast.success("Chat deleted");
+    } catch {
+      toast.error("Could not delete chat");
+    }
   }
 
   async function loadPendingRecs() {
@@ -592,19 +608,30 @@ export default function CoachChat() {
           ) : convs.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center p-4">No sessions yet</p>
           ) : convs.map(c => (
-            <button
+            <div
               key={c.id}
-              onClick={() => select(c.id)}
-              className={cn(
-                "w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors truncate",
-                active?.id === c.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-              )}
+              className="group flex items-center gap-1.5 rounded-lg transition-colors hover:bg-secondary/50"
             >
-              <MessageSquare className="h-3.5 w-3.5 inline mr-2 opacity-60" />
-              {c.metadata?.name || "Chat"}
-            </button>
+              <button
+                onClick={() => select(c.id)}
+                className={cn(
+                  "flex-1 text-left px-3 py-2.5 rounded-lg text-sm transition-colors truncate",
+                  active?.id === c.id
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <MessageSquare className="h-3.5 w-3.5 inline mr-2 opacity-60" />
+                {c.metadata?.name || "Chat"}
+              </button>
+              <button
+                onClick={(e) => deleteConv(c.id, e)}
+                className="px-2 py-2.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                title="Delete chat"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ))}
         </div>
 
