@@ -4,7 +4,11 @@ import { base44 } from '@/api/base44Client';
 const ImportContext = createContext();
 
 export function useImport() {
-  return useContext(ImportContext);
+  const ctx = useContext(ImportContext);
+  if (!ctx) {
+    throw new Error('useImport must be used within ImportProvider');
+  }
+  return ctx;
 }
 
 function pick(obj, keys) {
@@ -38,8 +42,12 @@ export function ImportProvider({ children }) {
     // Just a placeholder—actual logic stays in ImportProgressPill via ImportContext
   };
 
+  const cancelImport = () => {
+    // Placeholder for cancel logic
+  };
+
   return (
-    <ImportContext.Provider value={{ lastImportedAt, markImportDone, startImport }}>
+    <ImportContext.Provider value={{ lastImportedAt, markImportDone, startImport, cancelImport }}>
       {children}
     </ImportContext.Provider>
   );
