@@ -110,7 +110,7 @@ export function ImportProvider({ children }) {
       }
 
       // Step 3 — filter out future dates
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toLocaleDateString('en-CA');
       const metricsToSave = parseResult.metrics.filter(m => m.date && m.date <= todayStr);
 
       setStatus('saving');

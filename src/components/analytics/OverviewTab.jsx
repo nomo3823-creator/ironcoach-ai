@@ -38,7 +38,7 @@ export default function OverviewTab({ metrics, activities, profile }) {
   const [aiSummary, setAiSummary] = useState("");
   const [loadingAI, setLoadingAI] = useState(false);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1).filter(m => m.date <= todayStr);
   const latest = sorted[sorted.length - 1];
   const weekAgo = sorted[sorted.length - 8];

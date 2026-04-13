@@ -27,7 +27,7 @@ export default function Today() {
 
   async function loadData() {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA");
       const tomorrow = moment().add(1, "day").format("YYYY-MM-DD");
       const weekStart = moment().startOf('isoWeek').format('YYYY-MM-DD');
       const weekEnd = moment().endOf('isoWeek').format('YYYY-MM-DD');
@@ -102,7 +102,7 @@ export default function Today() {
     );
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA");
 
   return (
     <div className="p-4 lg:p-8 max-w-3xl mx-auto space-y-6">

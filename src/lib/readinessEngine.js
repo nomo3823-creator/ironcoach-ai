@@ -33,7 +33,7 @@ export function calculateReadiness(metrics = [], activities = []) {
   // ── RECOVERY SIGNALS (50pts) ──────────────────────────────────────────────
 
   // HRV (15 pts) — 7-day rolling mean vs 14-day baseline (more robust)
-  const todayStr = today?.date || new Date().toISOString().split('T')[0];
+  const todayStr = today?.date || new Date().toLocaleDateString('en-CA');
   const last14 = sorted.filter(m => m.hrv && m.hrv > 0 && m.date <= todayStr).slice(-14);
   const last7hrv = sorted.filter(m => m.hrv && m.hrv > 0 && m.date <= todayStr).slice(-7);
   const todayHRV = today?.hrv && today.hrv > 0 ? today.hrv : null;

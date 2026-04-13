@@ -81,7 +81,7 @@ function GaugeBar({ label, value, min, max, danger, good, unit }) {
 }
 
 export default function LoadTab({ metrics, activities }) {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1).filter(m => m.date <= todayStr);
   
   // Calculate fitness from activities (not stored metrics)

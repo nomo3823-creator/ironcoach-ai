@@ -6,7 +6,7 @@ const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222
 const SLEEP_QUALITY_COLOR = { poor: "#ef4444", fair: "#f97316", good: "#22c55e", excellent: "#84cc16" };
 
 export default function RecoveryTab({ metrics }) {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1);
   const last90 = sorted.filter(m => m.date <= todayStr).slice(-90);
 

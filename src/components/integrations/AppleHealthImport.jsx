@@ -305,7 +305,7 @@ export default function AppleHealthImport({ onImported }) {
       const { metrics, workouts, counters } = result;
 
       // Step 3: Save metrics to DailyMetrics (upsert per date)
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toLocaleDateString('en-CA');
       const metricsToSave = metrics.filter(m => m.date <= today);
       const total = metricsToSave.length;
       let savedCount = 0;

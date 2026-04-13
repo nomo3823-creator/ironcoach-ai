@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function TodaySessionCard({ workout, readiness, activities }) {
   const navigate = useNavigate();
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA");
   const completedToday = activities.find(a => a.date === today);
 
   if (completedToday) {

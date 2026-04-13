@@ -34,7 +34,7 @@ export default function Recovery() {
 
   async function loadData() {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA");
       
       // First try today's metrics
       let metricsResult = await base44.entities.DailyMetrics.filter({ 
@@ -76,7 +76,7 @@ export default function Recovery() {
 
   async function handleSaveCheckin() {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA");
       if (todayMetrics?.id) {
         await base44.entities.DailyMetrics.update(todayMetrics.id, {
           sleep_quality: sleepQuality,
@@ -215,7 +215,7 @@ export default function Recovery() {
         <h2 className="text-lg font-semibold text-foreground">Recovery Metrics</h2>
         
         {/* Show "data from" label if metrics are from a previous day */}
-        {metricsDate && metricsDate !== new Date().toISOString().split("T")[0] && (
+        {metricsDate && metricsDate !== new Date().toLocaleDateString("en-CA") && (
           <p className="text-xs text-muted-foreground">
             Showing data from {moment(metricsDate).format("MMM D")} — today's data not yet available
           </p>

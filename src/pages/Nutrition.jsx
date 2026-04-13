@@ -18,7 +18,7 @@ export default function Nutrition() {
 
   async function loadData() {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA");
       const [twData, pData] = await Promise.all([
         base44.entities.PlannedWorkout.filter({ date: today, created_by: currentUser.email }),
         base44.entities.AthleteProfile.filter({ created_by: currentUser.email }),

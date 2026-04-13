@@ -36,7 +36,7 @@ export function calculateFitnessMetrics(activities) {
   if (!activities?.length) return { ctl: 0, atl: 0, tsb: 0, dailyTSS: {}, history: {} };
   
   const sorted = [...activities].sort((a, b) => a.date > b.date ? 1 : -1);
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA");
   
   // Build daily TSS map
   const dailyTSS = {};
@@ -130,7 +130,7 @@ export async function downgradeWorkout(workout, reason, changeType, signalValue,
 export function checkHrvDrop(todayMetrics, historicalMetrics) {
   if (!todayMetrics?.hrv || !historicalMetrics?.length) return { shouldDowngrade: false };
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toLocaleDateString("en-CA");
   const last14 = historicalMetrics
     .filter((m) => m.hrv > 0 && m.date <= todayStr)
     .slice(-14)

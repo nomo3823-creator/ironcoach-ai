@@ -46,7 +46,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
-  const todayStr = () => new Date().toISOString().split("T")[0];
+  const todayStr = () => new Date().toLocaleDateString("en-CA");
 
   useEffect(() => {
     if (!currentUser || isLoadingAuth) return;

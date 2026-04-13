@@ -5,7 +5,7 @@ const sportEmoji = { run: "🏃", bike: "🚴", swim: "🏊", brick: "⚡", stre
 const sportColor = { run: "#f97316", bike: "#f59e0b", swim: "#0ea5e9", brick: "#a855f7", strength: "#22c55e", other: "#6b7280" };
 
 export default function WeeklySnapshot({ weekWorkouts, activities, weekStart, weekEnd }) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA");
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const weekDays = Array.from({ length: 7 }, (_, i) => {
