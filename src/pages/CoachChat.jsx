@@ -262,7 +262,7 @@ export default function CoachChat() {
 
     const c = await base44.agents.createConversation({
       agent_name: "iron_coach",
-      metadata: { name: `Session ${new Date().toLocaleDateString("en", { month: "short", day: "numeric" })}` },
+      metadata: { name: "New Chat" },
     });
     setConvs(p => [c, ...p]);
     setActive(c);
@@ -350,6 +350,28 @@ export default function CoachChat() {
       role:    "user",
       content: `${contextStr}\n\nAthlete: ${msg}`,
     });
+
+    // Generate a summarized title for the conversation if it's new
+    if (conv.metadata?.name === "New Chat") {
+      try {
+        const titleRes = await base44.integrations.Core.InvokeLLM({
+          prompt: `Based on this athlete message, generate a short 3-5 word chat title that summarizes the topic. Return JSON: { title: string }`,
+          response_json_schema: {
+            type: "object",
+            properties: { title: { type: "string" } },
+          },
+        });
+        if (titleRes?.title) {
+          await base44.agents.updateConversation(conv.id, {
+            metadata: { name: titleRes.title },
+          });
+          setConvs(p => p.map(c => c.id === conv.id ? { ...c, metadata: { name: titleRes.title } } : c));
+          if (active?.id === conv.id) {
+            setActive({ ...active, metadata: { name: titleRes.title } });
+          }
+        }
+      } catch {}
+    }
 
     setSending(false);
     const newCount = messageSentCount + 1;
