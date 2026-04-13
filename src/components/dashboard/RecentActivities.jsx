@@ -1,7 +1,26 @@
+import { useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { sportColors, sportIcons, formatDuration } from "@/lib/sportUtils";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import moment from "moment";
 
-export default function RecentActivities({ activities = [] }) {
+export default function RecentActivities({ activities = [], onRefresh }) {
+  const [syncing, setSyncing] = useState(false);
+
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      const res = await base44.functions.invoke("stravaSync", {});
+      toast("Sync complete", { description: `${res.data?.synced || 0} new activities imported` });
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      toast("Sync failed", { description: err.message, variant: "destructive" });
+    }
+    setSyncing(false);
+  }
+
   if (!activities.length) {
     return (
       <div className="rounded-xl border border-border bg-card p-5">
@@ -13,7 +32,13 @@ export default function RecentActivities({ activities = [] }) {
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Recent Activities</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground">Recent Activities</h3>
+        <Button size="sm" variant="ghost" onClick={handleSync} disabled={syncing} className="gap-1.5 text-xs h-7">
+          {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+          {syncing ? "Syncing..." : "Sync"}
+        </Button>
+      </div>
       <div className="space-y-2">
         {activities.slice(0, 6).map((a) => {
           const c = sportColors[a.sport] || sportColors.other;

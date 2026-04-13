@@ -160,6 +160,14 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
       return;
     }
 
+    // Auto-sync Strava data
+    try {
+      await base44.functions.invoke("stravaSync", {});
+    } catch (err) {
+      console.error("Strava sync failed:", err);
+      // non-blocking — continue loading even if sync fails
+    }
+
     const [workouts, metrics, acts, races, allMetrics] = await Promise.all([
       base44.entities.PlannedWorkout.filter({ date: today }),
       base44.entities.DailyMetrics.filter({ date: today }),
@@ -245,7 +253,7 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
             <TodayWorkoutCard workout={todayWorkout} onRefresh={load} />
           </div>
           <MorningBrief metrics={todayMetrics} workout={todayWorkout} profile={profile} />
-          <RecentActivities activities={activities} />
+          <RecentActivities activities={activities} onRefresh={load} />
         </div>
 
         {/* Right col */}
