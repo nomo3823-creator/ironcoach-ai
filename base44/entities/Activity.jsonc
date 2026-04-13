@@ -27,9 +27,21 @@
       "type": "number",
       "title": "Duration (min)"
     },
+    "moving_time_minutes": {
+      "type": "number",
+      "title": "Moving Time (min)"
+    },
     "distance_km": {
       "type": "number",
       "title": "Distance (km)"
+    },
+    "avg_speed_kph": {
+      "type": "number",
+      "title": "Avg Speed (kph)"
+    },
+    "max_speed_kph": {
+      "type": "number",
+      "title": "Max Speed (kph)"
     },
     "avg_hr": {
       "type": "number",
@@ -41,31 +53,133 @@
     },
     "avg_pace": {
       "type": "string",
-      "title": "Avg Pace"
+      "title": "Avg Pace (min/km)"
+    },
+    "avg_pace_per_100m": {
+      "type": "number",
+      "title": "Avg Pace per 100m (sec)"
+    },
+    "hr_zone_1_min": {
+      "type": "number",
+      "title": "HR Zone 1 Minutes"
+    },
+    "hr_zone_2_min": {
+      "type": "number",
+      "title": "HR Zone 2 Minutes"
+    },
+    "hr_zone_3_min": {
+      "type": "number",
+      "title": "HR Zone 3 Minutes"
+    },
+    "hr_zone_4_min": {
+      "type": "number",
+      "title": "HR Zone 4 Minutes"
+    },
+    "hr_zone_5_min": {
+      "type": "number",
+      "title": "HR Zone 5 Minutes"
+    },
+    "hr_drift_percent": {
+      "type": "number",
+      "title": "HR Drift %"
     },
     "avg_power": {
       "type": "number",
-      "title": "Avg Power"
+      "title": "Avg Power (W)"
+    },
+    "max_power_watts": {
+      "type": "number",
+      "title": "Max Power (W)"
     },
     "normalized_power": {
       "type": "number",
-      "title": "Normalized Power"
+      "title": "Normalized Power (W)"
+    },
+    "intensity_factor": {
+      "type": "number",
+      "title": "Intensity Factor"
+    },
+    "variability_index": {
+      "type": "number",
+      "title": "Variability Index"
+    },
+    "efficiency_factor": {
+      "type": "number",
+      "title": "Efficiency Factor"
+    },
+    "aerobic_decoupling": {
+      "type": "number",
+      "title": "Aerobic Decoupling %"
+    },
+    "training_stress_score": {
+      "type": "number",
+      "title": "Training Stress Score"
     },
     "tss": {
       "type": "number",
-      "title": "TSS"
+      "title": "TSS (Strava Suffer Score)"
+    },
+    "avg_cadence": {
+      "type": "number",
+      "title": "Avg Cadence"
+    },
+    "max_cadence": {
+      "type": "number",
+      "title": "Max Cadence"
+    },
+    "avg_stride_length_m": {
+      "type": "number",
+      "title": "Avg Stride Length (m)"
     },
     "calories": {
       "type": "number",
       "title": "Calories"
     },
+    "kilojoules": {
+      "type": "number",
+      "title": "Kilojoules"
+    },
     "elevation_gain": {
       "type": "number",
       "title": "Elevation Gain (m)"
     },
-    "cadence": {
+    "elevation_loss": {
       "type": "number",
-      "title": "Cadence"
+      "title": "Elevation Loss (m)"
+    },
+    "avg_temp_celsius": {
+      "type": "number",
+      "title": "Avg Temp (\u00b0C)"
+    },
+    "device_name": {
+      "type": "string",
+      "title": "Device"
+    },
+    "suffer_score": {
+      "type": "number",
+      "title": "Suffer Score"
+    },
+    "perceived_exertion": {
+      "type": "number",
+      "title": "Perceived Exertion (1-10)"
+    },
+    "intensity_level": {
+      "type": "string",
+      "title": "Intensity Level",
+      "enum": [
+        "easy",
+        "moderate",
+        "hard",
+        "race_pace"
+      ]
+    },
+    "splits_metric": {
+      "type": "string",
+      "title": "Splits (JSON)"
+    },
+    "best_efforts": {
+      "type": "string",
+      "title": "Best Efforts (JSON)"
     },
     "source": {
       "type": "string",
