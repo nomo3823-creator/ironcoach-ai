@@ -1,307 +1,117 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { useNavigate } from "react-router-dom";
-import ReadinessGauge from "../components/ui/ReadinessGauge";
-import TodayWorkoutCard from "../components/dashboard/TodayWorkoutCard";
-import QuickStats from "../components/dashboard/QuickStats";
-import MorningBrief from "../components/dashboard/MorningBrief";
-import RecentActivities from "../components/dashboard/RecentActivities";
-import CoachCheckin from "../components/dashboard/CoachCheckin";
-import { checkHrvDrop, checkPoorSleepStreak, downgradeWorkout } from "@/lib/planUtils";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import moment from "moment";
-import { getRaceLabel } from "@/lib/raceTypes";
+import DashboardHero from "@/components/dashboard/DashboardHero";
+import ReadinessGauge from "@/components/dashboard/ReadinessGauge";
+import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
+import StatCards from "@/components/dashboard/StatCards";
+import WeekAtAGlance from "@/components/dashboard/WeekAtAGlance";
+import MorningBrief from "@/components/dashboard/MorningBrief";
+import StravaActivityFeed from "@/components/dashboard/StravaActivityFeed";
+import TrainingLoadChart from "@/components/dashboard/TrainingLoadChart";
+import RaceCard from "@/components/dashboard/RaceCard";
+import PendingRecommendationsBanner from "@/components/dashboard/PendingRecommendationsBanner";
+import { calculateReadiness } from "@/lib/readinessEngine";
 
-function MetricRow({ label, value, sub }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="text-right">
-        <span className="text-sm font-medium text-foreground">{value}</span>
-        {sub && <span className="text-xs text-muted-foreground ml-1.5">{sub}</span>}
-      </div>
-    </div>
-  );
-}
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
-}
+const SkeletonSection = () => (
+  <div className="space-y-2">
+    <div className="h-6 bg-secondary/30 rounded w-3/4 animate-pulse" />
+    <div className="h-20 bg-secondary/20 rounded animate-pulse" />
+  </div>
+);
 
 export default function Dashboard() {
-  const { currentUser } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [todayWorkout, setTodayWorkout] = useState(null);
+  const { currentUser, isLoadingAuth } = useAuth();
+  const [profile, setProfile] = useState(null);
   const [todayMetrics, setTodayMetrics] = useState(null);
   const [activities, setActivities] = useState([]);
-  const [nextRace, setNextRace] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [weekStats, setWeekStats] = useState({ hours: 0, count: 0 });
+  const [plannedWorkout, setPlannedWorkout] = useState(null);
+  const [race, setRace] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
+  const [readiness, setReadiness] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const today = moment().format("YYYY-MM-DD");
-  const weekStart = moment().startOf("isoWeek").format("YYYY-MM-DD");
-  const weekEnd = moment().endOf("isoWeek").format("YYYY-MM-DD");
+  useEffect(() => {
+    if (!currentUser || isLoadingAuth) return;
+    loadDashboardData();
+  }, [currentUser, isLoadingAuth]);
 
-  async function weeklyReview(profile) {
-    const today = moment().format("YYYY-MM-DD");
-    if (profile.last_weekly_review_date === today) return; // already ran today
+  async function loadDashboardData() {
+    try {
+      const [profileData, metricsData, activitiesData, raceData, recData] = await Promise.all([
+        base44.entities.AthleteProfile.filter({ created_by: currentUser.email }),
+        base44.entities.DailyMetrics.filter({ date: todayStr() }),
+        base44.entities.Activity.filter({ created_by: currentUser.email }),
+        base44.entities.Race.filter({ created_by: currentUser.email }),
+        base44.entities.PlanRecommendation.filter({ created_by: currentUser.email, status: "pending" }),
+      ]);
 
-    const weekStart = moment().subtract(7, "days").format("YYYY-MM-DD");
-    const [pastWorkouts, pastMetrics] = await Promise.all([
-      base44.entities.PlannedWorkout.list("date", 50),
-      base44.entities.DailyMetrics.list("date", 14),
-    ]);
+      setProfile(profileData[0] || null);
+      setTodayMetrics(metricsData[0] || null);
+      setActivities(activitiesData || []);
+      setRace(raceData?.sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null);
+      setRecommendations(recData || []);
 
-    const weekWorkouts = pastWorkouts.filter((w) => w.date >= weekStart && w.date < today);
-    const completed = weekWorkouts.filter((w) => w.status === "completed").length;
-    const missed = weekWorkouts.filter((w) => w.status === "skipped" || (w.status === "planned" && w.date < today)).length;
-    const compliance = weekWorkouts.length > 0 ? Math.round((completed / weekWorkouts.length) * 100) : 0;
+      // Calculate readiness
+      const allMetrics = await base44.entities.DailyMetrics.filter({ created_by: currentUser.email });
+      const readinessScore = calculateReadiness(allMetrics, activitiesData);
+      setReadiness(readinessScore);
 
-    const weekMetrics = pastMetrics.filter((m) => m.date >= weekStart && m.date < today);
-    const avgHrv = weekMetrics.length > 0 ? Math.round(weekMetrics.reduce((s, m) => s + (m.hrv || 0), 0) / weekMetrics.filter(m => m.hrv).length) : null;
-
-    const nextWeekWorkouts = pastWorkouts.filter((w) => w.date >= today && w.date <= moment().add(7, "days").format("YYYY-MM-DD") && w.status === "planned").slice(0, 14);
-
-    const raceLabel = profile.race_type ? getRaceLabel(profile.race_type) : "endurance";
-    const review = await base44.integrations.Core.InvokeLLM({
-      prompt: `Weekly training review for a ${raceLabel} athlete.
-Last week: ${completed} completed, ${missed} missed (${compliance}% compliance). Average HRV: ${avgHrv || "unknown"}ms.
-Profile: FTP ${profile.current_ftp || "unknown"}W, limiter: ${profile.biggest_limiter || "unknown"}.
-Next week planned workouts: ${JSON.stringify(nextWeekWorkouts.map(w => ({ id: w.id, date: w.date, title: w.title, duration: w.duration_minutes, intensity: w.intensity })))}
-Assess last week and return JSON adjustments for next week. If compliance < 70% or HRV trending down, reduce load. If compliance > 90%, consider adding volume.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          summary: { type: "string" },
-          adjustments: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                workout_id: { type: "string" },
-                new_duration_minutes: { type: "number" },
-                new_intensity: { type: "string" },
-                adjustment_reason: { type: "string" },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    // Apply adjustments
-    for (const adj of (review?.adjustments || [])) {
-      if (!adj.workout_id) continue;
-      await base44.entities.PlannedWorkout.update(adj.workout_id, {
-        duration_minutes: adj.new_duration_minutes,
-        intensity: adj.new_intensity,
-        ai_adjustment_reason: adj.adjustment_reason,
-        status: "modified",
-      });
-      await base44.entities.PlanChangeLog.create({
-        workout_id: adj.workout_id,
-        change_type: "weekly_review",
-        change_summary: adj.adjustment_reason,
-        reason: review.summary,
-        after_duration: adj.new_duration_minutes,
-        after_intensity: adj.new_intensity,
-        signal_value: `Compliance: ${compliance}%, Avg HRV: ${avgHrv || "—"}ms`,
-      });
+      // Load today's planned workout
+      const planned = await base44.entities.PlannedWorkout.filter({ date: todayStr() });
+      setPlannedWorkout(planned[0] || null);
+    } catch (err) {
+      console.error("Dashboard load error:", err);
+    } finally {
+      setLoading(false);
     }
-
-    // Post summary to most recent coach conversation
-    if (review?.summary) {
-      const convs = await base44.agents.listConversations({ agent_name: "iron_coach" });
-      if (convs?.[0]) {
-        const conv = await base44.agents.getConversation(convs[0].id);
-        await base44.agents.addMessage(conv, {
-          role: "assistant",
-          content: `**Weekly Review — ${moment().format("MMM D")}**\n\n${review.summary}${review.adjustments?.length ? `\n\nI've adjusted ${review.adjustments.length} session(s) for this week based on your recent training data.` : ""}`,
-        });
-      }
-    }
-
-    // Mark review done
-    await base44.entities.AthleteProfile.update(profile.id, { last_weekly_review_date: today });
-
-    toast("Weekly review complete", {
-      description: review?.adjustments?.length
-        ? `Adjusted ${review.adjustments.length} session(s) for this week. Open the coach chat for details.`
-        : "No adjustments needed — your plan stays as-is this week.",
-      duration: 8000,
-    });
   }
 
-  async function load() {
-    setLoading(true);
+  const todayStr = () => new Date().toISOString().split("T")[0];
 
-    // Onboarding gate: check the profile FIRST so a failed peripheral fetch
-    // (e.g. a new user with no workouts/metrics yet) can't block the redirect.
-    let profiles;
-    try {
-      profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
-    } catch (err) {
-      console.error("Failed to load athlete profile:", err);
-      navigate("/onboarding");
-      return;
-    }
-    const p = profiles?.[0];
-    // Strict equality: only `true` lets the user through. Any missing profile,
-    // auto-created profile with the schema default `false`, or undefined flag
-    // must redirect to onboarding.
-    if (!p || p.onboarding_complete !== true) {
-      navigate("/onboarding");
-      return;
-    }
-
-    // Auto-sync Strava data
-    try {
-      await base44.functions.invoke("stravaSync", {});
-    } catch (err) {
-      console.error("Strava sync failed:", err);
-      // non-blocking — continue loading even if sync fails
-    }
-
-    const [workouts, metrics, acts, races, allMetrics] = await Promise.all([
-      base44.entities.PlannedWorkout.filter({ date: today }),
-      base44.entities.DailyMetrics.filter({ date: today }),
-      base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 20),
-      base44.entities.Race.list("date", 10),
-      base44.entities.DailyMetrics.list("date", 20),
-    ]);
-
-    setTodayWorkout(workouts?.[0] || null);
-    setTodayMetrics(metrics?.[0] || null);
-    
-    // Deduplicate activities by date + external_id
-    const seen = new Set();
-    const deduped = (acts || []).filter(a => {
-      const key = `${a.date}-${a.external_id || a.id}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    setActivities(deduped);
-    setProfile(p);
-
-    const future = (races || []).filter((r) => moment(r.date).isAfter(moment()));
-    setNextRace(future[0] || null);
-
-    const weekActs = (acts || []).filter((a) => a.date >= weekStart && a.date <= weekEnd);
-    setWeekStats({ hours: weekActs.reduce((s, a) => s + (a.duration_minutes || 0), 0) / 60, count: weekActs.length });
-
-    // Monday weekly review
-    if (new Date().getDay() === 1) {
-      weeklyReview(p).catch(() => {}); // non-blocking
-    }
-
-    // HRV auto-downgrade check
-    const todayM = metrics?.[0];
-    const todayW = workouts?.[0];
-    if (todayM && todayW && todayW.status === "planned" && todayW.intensity !== "easy") {
-      const { shouldDowngrade, dropPct, rollingAvg } = checkHrvDrop(todayM, allMetrics || []);
-      if (shouldDowngrade) {
-        const reason = `HRV is ${todayM.hrv}ms — ${dropPct}% below your 14-day average of ${rollingAvg}ms. Downgraded today's session to recovery to protect your adaptation.`;
-        await downgradeWorkout(todayW, reason, "hrv_drop", `HRV: ${todayM.hrv}ms (avg: ${rollingAvg}ms)`);
-        toast("Plan adjusted — HRV drop detected", {
-          description: `Today's session reduced to recovery (HRV ${dropPct}% below 14-day avg). Check the Plan Change Log for details.`,
-          duration: 8000,
-        });
-        // Refresh the workout so the UI shows the updated state
-        const updated = await base44.entities.PlannedWorkout.filter({ date: today });
-        setTodayWorkout(updated?.[0] || null);
-      } else {
-        const sleepStreak = checkPoorSleepStreak(allMetrics || []);
-        if (sleepStreak >= 3) {
-          await downgradeWorkout(todayW, `${sleepStreak} consecutive nights of poor/fair sleep detected. Reducing today's load to support recovery.`, "poor_sleep", `Sleep streak: ${sleepStreak} nights`);
-          toast("Plan adjusted — poor sleep streak", {
-            description: `${sleepStreak} nights of poor/fair sleep. Today's session reduced to recovery.`,
-            duration: 8000,
-          });
-          const updated = await base44.entities.PlannedWorkout.filter({ date: today });
-          setTodayWorkout(updated?.[0] || null);
-        }
-      }
-    }
-
-    setLoading(false);
-  }
-
-  useEffect(() => { load(); }, []);
-
-  const daysToRace = nextRace ? moment(nextRace.date).diff(moment(), "days") : null;
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoadingAuth || loading) {
+    return (
+      <div className="p-6 space-y-8">
+        <SkeletonSection />
+        <SkeletonSection />
+      </div>
+    );
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
-          Good {greeting()}, <span className="text-primary">{profile?.first_name || currentUser?.full_name?.split(" ")[0] || "Athlete"}</span>
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">{moment().format("dddd, MMMM Do")} · Week {moment().isoWeek()}</p>
+    <div className="min-h-screen bg-background">
+      {/* Desktop: 2-column layout */}
+      <div className="hidden lg:grid lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto">
+        {/* LEFT COLUMN (wider) */}
+        <div className="lg:col-span-2 space-y-6">
+          <DashboardHero profile={profile} race={race} readiness={readiness} />
+          {recommendations.length > 0 && <PendingRecommendationsBanner recommendations={recommendations} />}
+          <TodaySessionCard workout={plannedWorkout} readiness={readiness} activities={activities} />
+          <MorningBrief profile={profile} metrics={todayMetrics} activities={activities} readiness={readiness} />
+          <StravaActivityFeed activities={activities} />
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="space-y-6">
+          <ReadinessGauge readiness={readiness} />
+          <StatCards profile={profile} metrics={todayMetrics} activities={activities} race={race} />
+          <WeekAtAGlance activities={activities} />
+          <TrainingLoadChart activities={activities} />
+          {race && <RaceCard race={race} readiness={readiness} profile={profile} />}
+        </div>
       </div>
 
-      <QuickStats stats={{ weeklyHours: weekStats.hours, daysToRace, raceName: nextRace?.name, ctl: todayMetrics?.ctl, activitiesThisWeek: weekStats.count }} />
-
-      <CoachCheckin profile={profile} metrics={todayMetrics} workout={todayWorkout} />
-
-      <div className="grid lg:grid-cols-3 gap-5">
-        {/* Left col */}
-        <div className="lg:col-span-2 space-y-5">
-          <div>
-            <h2 className="text-xs uppercase tracking-widest font-semibold text-muted-foreground mb-3">Today's Session</h2>
-            <TodayWorkoutCard workout={todayWorkout} onRefresh={load} />
-          </div>
-          <MorningBrief metrics={todayMetrics} workout={todayWorkout} profile={profile} />
-          <RecentActivities activities={activities} onRefresh={load} />
-        </div>
-
-        {/* Right col */}
-        <div className="space-y-5">
-          <div className="rounded-xl border border-border bg-card p-5">
-            <ReadinessGauge score={todayMetrics?.readiness_score || 0} />
-            <div className="mt-5 space-y-3">
-              <MetricRow label="HRV" value={todayMetrics?.hrv ? `${todayMetrics.hrv}ms` : "—"} />
-              <MetricRow label="Resting HR" value={todayMetrics?.resting_hr ? `${todayMetrics.resting_hr}bpm` : "—"} />
-              <MetricRow label="Sleep" value={todayMetrics?.sleep_hours ? `${todayMetrics.sleep_hours}h` : "—"} sub={todayMetrics?.sleep_quality} />
-              <MetricRow label="Body Battery" value={todayMetrics?.body_battery ? `${todayMetrics.body_battery}/100` : "—"} />
-              <MetricRow label="TSB (Form)" value={todayMetrics?.tsb != null ? todayMetrics.tsb : "—"} />
-              <MetricRow label="SpO2" value={todayMetrics?.spo2 ? `${todayMetrics.spo2}%` : "—"} />
-            </div>
-          </div>
-
-          {nextRace && (
-            <div className="rounded-xl border border-border bg-card p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🏁</span>
-                <h3 className="text-sm font-semibold text-foreground">{nextRace.name}</h3>
-                <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold">{nextRace.priority}</span>
-              </div>
-              <div className="text-3xl font-bold text-accent">{daysToRace} <span className="text-sm font-normal text-muted-foreground">days</span></div>
-              <p className="text-xs text-muted-foreground mt-1">{moment(nextRace.date).format("MMM D, YYYY")} · {getRaceLabel(nextRace.race_type || nextRace.distance)}{nextRace.location ? ` · ${nextRace.location}` : ""}</p>
-              {nextRace.readiness_score > 0 && (
-                <div className="mt-3">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Race Readiness</span>
-                    <span className="font-medium text-foreground">{nextRace.readiness_score}%</span>
-                  </div>
-                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${nextRace.readiness_score}%` }} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+      {/* Mobile: single column */}
+      <div className="lg:hidden space-y-6 p-4">
+        <DashboardHero profile={profile} race={race} readiness={readiness} />
+        {recommendations.length > 0 && <PendingRecommendationsBanner recommendations={recommendations} />}
+        <TodaySessionCard workout={plannedWorkout} readiness={readiness} activities={activities} />
+        <StatCards profile={profile} metrics={todayMetrics} activities={activities} race={race} />
+        <WeekAtAGlance activities={activities} />
+        <MorningBrief profile={profile} metrics={todayMetrics} activities={activities} readiness={readiness} />
+        <TrainingLoadChart activities={activities} />
+        <StravaActivityFeed activities={activities} />
+        {race && <RaceCard race={race} readiness={readiness} profile={profile} />}
       </div>
     </div>
   );

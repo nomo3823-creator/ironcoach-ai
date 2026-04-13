@@ -1,67 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { ChevronDown, ChevronUp, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getRaceLabel } from "@/lib/raceTypes";
-import ReactMarkdown from "react-markdown";
+import { Loader2 } from "lucide-react";
 
-export default function MorningBrief({ metrics, workout, profile }) {
-  const [brief, setBrief] = useState(null);
+export default function MorningBrief({ profile, metrics, activities, readiness }) {
+  const [brief, setBrief] = useState("");
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState(null);
 
-  async function generate() {
+  useEffect(() => {
+    generateBrief();
+  }, [profile, metrics, readiness]);
+
+  async function generateBrief() {
+    if (!profile || !readiness) return;
     setLoading(true);
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are IronCoach AI, an elite endurance coach${profile?.race_type ? ` specializing in ${getRaceLabel(profile.race_type)} athletes` : ""}. Write a personalized morning brief in 3-4 sentences.
+    try {
+      const yesterday = activities?.find(a => {
+        const d = new Date(a.date);
+        const yd = new Date();
+        yd.setDate(yd.getDate() - 1);
+        return a.date === yd.toISOString().split("T")[0];
+      });
 
-Athlete: ${profile?.first_name || profile?.full_name || "Athlete"} | FTP: ${profile?.current_ftp || "?"}W | VO2max: ${profile?.vo2_max || "?"}
-Target race: ${profile?.race_type ? getRaceLabel(profile.race_type) : "endurance event"}
-Today's HRV: ${metrics?.hrv || "?"}ms | Resting HR: ${metrics?.resting_hr || "?"}bpm
-Sleep: ${metrics?.sleep_hours || "?"}h (${metrics?.sleep_quality || "?"} quality) | Body Battery: ${metrics?.body_battery || "?"}/100
-Readiness: ${metrics?.readiness_score || "?"}/100 | Mood: ${metrics?.mood || "?"}
-CTL: ${metrics?.ctl || "?"} | ATL: ${metrics?.atl || "?"} | TSB: ${metrics?.tsb || "?"}
-Injury: ${metrics?.injury_flag ? "YES" : "No"} | Illness: ${metrics?.illness_flag ? "YES" : "No"}
-Today's workout: ${workout ? `${workout.title} (${workout.sport}, ${workout.duration_minutes}min, ${workout.intensity})` : "Rest day"}
+      const prompt = `You are a triathlon coach. Generate a brief, personalized morning message to ${profile.user_name?.split(" ")[0] || "the athlete"}. 
+Include:
+- Their actual HRV (${metrics?.hrv || "not logged"}ms), sleep (${metrics?.sleep_hours || "not logged"}h), and form/TSB (${readiness?.breakdown?.tsb_value || "—"})
+- What they did yesterday: ${yesterday?.title || "rest day"}
+- Today's session: reference the planned workout
+- One specific tip or reminder
+- 4 sentences max, no bullet points.`;
 
-Be direct, reference specific numbers, give actionable advice. If recovery is low, recommend adjustment. End with motivation.`,
-    });
-    setBrief(result);
-    setLoading(false);
-    setExpanded(true);
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        model: "gpt_5_mini",
+      });
+
+      setBrief(res.response || "");
+      setGeneratedAt(new Date());
+    } catch (err) {
+      console.error("Brief generation error:", err);
+      setBrief("Your coach brief will appear here. Regenerate to get started.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <button
-        onClick={() => { if (!brief && !loading) generate(); else setExpanded(!expanded); }}
-        className="w-full flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-primary" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-foreground">AI Morning Brief</p>
-            <p className="text-xs text-muted-foreground">{brief ? "Personalized coaching insight" : "Generate today's brief"}</p>
-          </div>
-        </div>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> :
-          expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> :
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-      </button>
-      {expanded && brief && (
-        <div className="px-4 pb-4 space-y-2">
-          <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-            <ReactMarkdown className="text-sm text-foreground/90 leading-relaxed prose prose-sm max-w-none [&_p]:text-foreground/90 [&_strong]:text-foreground">
-              {brief}
-            </ReactMarkdown>
-          </div>
-          <Button size="sm" variant="ghost" className="text-xs text-muted-foreground h-7" onClick={(e) => { e.stopPropagation(); setBrief(null); generate(); }}>
-            <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
-          </Button>
-        </div>
-      )}
+    <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Morning Brief</h3>
+        <Button size="sm" variant="ghost" onClick={generateBrief} disabled={loading} className="text-xs h-7">
+          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Regenerate"}
+        </Button>
+      </div>
+
+      <p className="text-sm text-foreground leading-relaxed">{brief || "Loading your brief..."}</p>
+
+      {generatedAt && <p className="text-xs text-muted-foreground">Generated {generatedAt.toLocaleTimeString()}</p>}
     </div>
   );
 }
