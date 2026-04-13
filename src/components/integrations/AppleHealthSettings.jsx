@@ -17,6 +17,89 @@ export default function AppleHealthSettings() {
   const [diag, setDiag] = useState(null);
   const [diagLoading, setDiagLoading] = useState(false);
 
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState(null);
+
+  const METRIC_FIELDS = [
+    "hrv", "resting_hr", "sleep_hours", "sleep_quality", "sleep_deep_minutes",
+    "sleep_rem_minutes", "sleep_awake_minutes", "spo2", "body_battery",
+    "active_calories", "respiratory_rate", "vo2_max", "weight_kg",
+    "readiness_score", "ctl", "atl", "tsb",
+  ];
+  const MANUAL_FIELDS = [
+    "notes", "injury_flag", "illness_flag", "mood",
+    "morning_checkin_complete", "energy_level", "legs_feeling",
+  ];
+
+  function hasRealValue(v) {
+    return v !== null && v !== undefined && v !== "" && !(typeof v === "boolean" && v === false) && !(typeof v === "number" && v === 0);
+  }
+
+  function rowIsSkeleton(row) {
+    return !METRIC_FIELDS.some(f => hasRealValue(row[f])) &&
+           !MANUAL_FIELDS.some(f => hasRealValue(row[f]));
+  }
+
+  function countPopulatedFields(row) {
+    return METRIC_FIELDS.filter(f => hasRealValue(row[f])).length +
+           MANUAL_FIELDS.filter(f => hasRealValue(row[f])).length;
+  }
+
+  async function runCleanup() {
+    if (!window.confirm("Delete all empty rows and merge duplicates? This cannot be undone.")) return;
+    setCleanupLoading(true);
+    setCleanupResult(null);
+    try {
+      const all = await base44.entities.DailyMetrics.filter(
+        { created_by: currentUser.email },
+        "-date",
+        10000
+      );
+
+      // 1. Find skeleton rows to delete outright.
+      const skeletons = (all || []).filter(rowIsSkeleton);
+
+      // 2. Group by date; for any date with >1 row, keep the one with the most
+      //    populated fields, delete the rest.
+      const byDate = new Map();
+      for (const r of all || []) {
+        if (!byDate.has(r.date)) byDate.set(r.date, []);
+        byDate.get(r.date).push(r);
+      }
+      const duplicatesToDelete = [];
+      for (const [, rows] of byDate) {
+        if (rows.length < 2) continue;
+        rows.sort((a, b) => countPopulatedFields(b) - countPopulatedFields(a));
+        duplicatesToDelete.push(...rows.slice(1));
+      }
+
+      // Dedupe ids across the two lists
+      const idsToDelete = new Set([
+        ...skeletons.map(r => r.id),
+        ...duplicatesToDelete.map(r => r.id),
+      ]);
+
+      let deleted = 0;
+      for (const id of idsToDelete) {
+        try {
+          await base44.entities.DailyMetrics.delete(id);
+          deleted++;
+        } catch {}
+      }
+
+      setCleanupResult({
+        scanned: all?.length ?? 0,
+        skeletons: skeletons.length,
+        duplicates: duplicatesToDelete.length,
+        deleted,
+      });
+    } catch (err) {
+      setCleanupResult({ error: err?.message || "Cleanup failed" });
+    } finally {
+      setCleanupLoading(false);
+    }
+  }
+
   async function runDiagnostic() {
     setDiagLoading(true);
     setDiag(null);
@@ -180,10 +263,30 @@ export default function AppleHealthSettings() {
               </p>
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={runDiagnostic} disabled={diagLoading}>
-            {diagLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Run"}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={runDiagnostic} disabled={diagLoading}>
+              {diagLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Run"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={runCleanup} disabled={cleanupLoading}>
+              {cleanupLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Clean up"}
+            </Button>
+          </div>
         </div>
+
+        {cleanupResult && (
+          <div className="text-xs rounded-lg bg-secondary/40 p-3 space-y-1 font-mono">
+            {cleanupResult.error ? (
+              <p className="text-destructive">Error: {cleanupResult.error}</p>
+            ) : (
+              <>
+                <p><span className="text-muted-foreground">scanned:</span> <strong className="text-foreground">{cleanupResult.scanned}</strong> rows</p>
+                <p><span className="text-muted-foreground">skeleton rows:</span> <strong className="text-foreground">{cleanupResult.skeletons}</strong></p>
+                <p><span className="text-muted-foreground">duplicate rows:</span> <strong className="text-foreground">{cleanupResult.duplicates}</strong></p>
+                <p><span className="text-muted-foreground">deleted:</span> <strong className="text-recovery">{cleanupResult.deleted}</strong></p>
+              </>
+            )}
+          </div>
+        )}
 
         {diag && (
           <div className="space-y-2 text-xs">
