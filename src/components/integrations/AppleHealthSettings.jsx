@@ -22,16 +22,23 @@ export default function AppleHealthSettings() {
   }, [currentUser]);
 
   async function handleImported() {
-    // Debounce: wait 1.5s for backend to settle after bulk import
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    try {
-      const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email });
-      setProfile(data[0] || null);
-    } catch (err) {
-      // Silent retry after rate limit cooldown
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email });
-      setProfile(data[0] || null);
+    // Wait for backend to settle after bulk import—rate limits apply
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email });
+        setProfile(data[0] || null);
+        return;
+      } catch (err) {
+        retries--;
+        if (retries > 0) {
+          // Exponential backoff: 3s, 5s, 8s
+          const delay = 3000 + (3 - retries) * 2000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
   }
 
