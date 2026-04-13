@@ -11,9 +11,11 @@ import {
 export function Toaster() {
   const { toasts } = useToast();
 
+  const { dismiss } = useToast();
+
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+      {toasts.map(function ({ id, title, description, action, onOpenChange, open, ...props }) {
         return (
           <Toast key={id} {...props}>
             <div className="grid gap-1">
@@ -23,11 +25,11 @@ export function Toaster() {
               )}
             </div>
             {action}
-            <ToastClose />
+            <ToastClose onClick={() => dismiss(id)} />
           </Toast>
         );
       })}
       <ToastViewport />
     </ToastProvider>
   );
-} 
+}
