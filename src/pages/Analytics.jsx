@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FitnessChart from "../components/analytics/FitnessChart";
@@ -8,6 +9,7 @@ import RecoveryTrends from "../components/analytics/RecoveryTrends";
 import ZoneDistribution from "../components/analytics/ZoneDistribution";
 
 export default function Analytics() {
+  const { currentUser } = useAuth();
   const [metrics, setMetrics] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,8 +17,8 @@ export default function Analytics() {
   useEffect(() => {
     async function load() {
       const [m, a] = await Promise.all([
-        base44.entities.DailyMetrics.list("date", 500),
-        base44.entities.Activity.list("-date", 500),
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "date", 500),
+        base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 500),
       ]);
       setMetrics(m || []);
       setActivities(a || []);

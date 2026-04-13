@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 import moment from "moment";
 
 export default function LogMetrics() {
+  const { currentUser } = useAuth();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     date: moment().format("YYYY-MM-DD"),
@@ -32,7 +34,7 @@ export default function LogMetrics() {
       })
     );
     // Upsert: update existing entry for this date if it exists
-    const existing = await base44.entities.DailyMetrics.filter({ date: form.date });
+    const existing = await base44.entities.DailyMetrics.filter({ date: form.date, created_by: currentUser.email });
     if (existing?.[0]) {
       await base44.entities.DailyMetrics.update(existing[0].id, data);
     } else {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { sportColors, sportIcons, formatDuration, phaseLabels } from "@/lib/sportUtils";
 import { ChevronLeft, ChevronRight, Loader2, X, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ const STATUS_STYLES = {
 const INTENSITY_LABELS = { easy: "Easy", moderate: "Moderate", hard: "Hard", race_pace: "Race Pace", recovery: "Recovery" };
 
 export default function TrainingPlan() {
+  const { currentUser } = useAuth();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(moment().startOf("month"));
@@ -27,7 +29,7 @@ export default function TrainingPlan() {
 
   async function load() {
     setLoading(true);
-    const data = await base44.entities.PlannedWorkout.list("date", 1000);
+    const data = await base44.entities.PlannedWorkout.filter({ created_by: currentUser.email }, "date", 1000);
     setWorkouts(data || []);
     setLoading(false);
   }

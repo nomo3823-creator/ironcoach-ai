@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +55,7 @@ function getSplits(raceType, race) {
 }
 
 export default function RacePlanner() {
+  const { currentUser } = useAuth();
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -64,7 +66,7 @@ export default function RacePlanner() {
   });
 
   async function load() {
-    const data = await base44.entities.Race.list("date", 50);
+    const data = await base44.entities.Race.filter({ created_by: currentUser.email }, "date", 50);
     setRaces(data || []);
     setLoading(false);
   }
@@ -101,7 +103,7 @@ export default function RacePlanner() {
 
   async function predict(race) {
     setPredicting(race.id);
-    const profile = (await base44.entities.AthleteProfile.list("-created_date", 1))?.[0];
+    const profile = (await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1))?.[0];
     const raceType = race.race_type || race.distance || "custom";
     const raceInfo = getRaceType(raceType);
 

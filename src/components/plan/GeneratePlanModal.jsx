@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,6 +137,7 @@ Return workouts JSON array:`,
 }
 
 export default function GeneratePlanModal({ onClose }) {
+  const { currentUser } = useAuth();
   const [raceDate,      setRaceDate]      = useState("");
   const [raceType,      setRaceType]      = useState("140.6");
   const [hoursPerWeek,  setHoursPerWeek]  = useState("10");
@@ -156,11 +158,11 @@ export default function GeneratePlanModal({ onClose }) {
     setDone(false);
     setProgress({ phase: "preparing", current: 0, total: 1, pct: 0 });
 
-    const profile = (await base44.entities.AthleteProfile.list("-created_date", 1))?.[0];
+    const profile = (await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1))?.[0];
 
     if (clearExisting) {
       setProgress(p => ({ ...p, phase: "clearing existing plan" }));
-      const existing = await base44.entities.PlannedWorkout.list("date", 1000);
+      const existing = await base44.entities.PlannedWorkout.filter({ created_by: currentUser.email }, "date", 1000);
       const toDelete = (existing || []).filter(w => w.status === "planned" || w.status === "modified");
       await Promise.all(toDelete.map(w => base44.entities.PlannedWorkout.delete(w.id)));
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Loader2, Filter, Clock, Heart, MessageCircle, AlertTriangle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const TYPE_META = {
 };
 
 export default function PlanChangeLogPanel() {
+  const { currentUser } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -25,7 +27,7 @@ export default function PlanChangeLogPanel() {
 
   useEffect(() => {
     async function load() {
-      const data = await base44.entities.PlanChangeLog.list("-created_date", 100);
+      const data = await base44.entities.PlanChangeLog.filter({ created_by: currentUser.email }, "-created_date", 100);
       setLogs(data || []);
       setLoading(false);
     }

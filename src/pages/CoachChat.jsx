@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,15 +16,15 @@ import moment from "moment";
 
 // ─── Context helpers ──────────────────────────────────────────────────────
 
-async function loadAthleteContext() {
+async function loadAthleteContext(userEmail) {
   const today   = moment().format("YYYY-MM-DD");
   const in14    = moment().add(14, "days").format("YYYY-MM-DD");
   const [profiles, metricsArr, workoutsArr, races, allWorkouts] = await Promise.all([
-    base44.entities.AthleteProfile.list("-created_date", 1),
-    base44.entities.DailyMetrics.filter({ date: today }),
-    base44.entities.PlannedWorkout.filter({ date: today }),
-    base44.entities.Race.list("date", 5),
-    base44.entities.PlannedWorkout.list("date", 60),
+    base44.entities.AthleteProfile.filter({ created_by: userEmail }, "-created_date", 1),
+    base44.entities.DailyMetrics.filter({ date: today, created_by: userEmail }),
+    base44.entities.PlannedWorkout.filter({ date: today, created_by: userEmail }),
+    base44.entities.Race.filter({ created_by: userEmail }, "date", 5),
+    base44.entities.PlannedWorkout.filter({ created_by: userEmail }, "date", 60),
   ]);
   const next14Days = (allWorkouts || []).filter(w => w.date >= today && w.date <= in14);
   return {
@@ -171,6 +172,7 @@ function PlanApprovalCard({ rec, onApprove, onReject }) {
 // ─── Main component ───────────────────────────────────────────────────────
 
 export default function CoachChat() {
+  const { currentUser } = useAuth();
   const [convs,              setConvs]              = useState([]);
   const [active,             setActive]             = useState(null);
   const [messages,           setMessages]           = useState([]);
@@ -188,16 +190,18 @@ export default function CoachChat() {
   const lastMsgCountRef = useRef(0);
 
   useEffect(() => {
-    loadConvs();
-    initContext();
-    loadPendingRecs();
-  }, []);
+    if (currentUser?.email) {
+      loadConvs();
+      initContext();
+      loadPendingRecs();
+    }
+  }, [currentUser?.email]);
 
   // ── Init ──────────────────────────────────────────────────────────────
 
   async function initContext() {
     setLoadingStarters(true);
-    const ctx = await loadAthleteContext();
+    const ctx = await loadAthleteContext(currentUser.email);
     setAthleteCtx(ctx);
 
     const today = moment().format("YYYY-MM-DD");
@@ -235,7 +239,7 @@ export default function CoachChat() {
 
   async function loadPendingRecs() {
     try {
-      const recs = await base44.entities.PlanRecommendation.list("-created_date", 10);
+      const recs = await base44.entities.PlanRecommendation.filter({ created_by: currentUser.email }, "-created_date", 10);
       setPendingRecs((recs || []).filter(r => r.status === "pending"));
     } catch {
       setPendingRecs([]);
@@ -253,7 +257,7 @@ export default function CoachChat() {
   }
 
   async function newConv() {
-    const ctx = athleteCtx || await loadAthleteContext();
+    const ctx = athleteCtx || await loadAthleteContext(currentUser.email);
     if (!athleteCtx) setAthleteCtx(ctx);
 
     const c = await base44.agents.createConversation({
@@ -338,7 +342,7 @@ export default function CoachChat() {
     }
 
     // Always load fresh context so every message has current data
-    const ctx = await loadAthleteContext();
+    const ctx = await loadAthleteContext(currentUser.email);
     setAthleteCtx(ctx);
     const contextStr = buildContextString(ctx.profile, ctx.metrics, ctx.workout, ctx.races, ctx.next14Days);
 
@@ -369,7 +373,7 @@ export default function CoachChat() {
 
     if (hasSignal) {
       // Update athlete insights
-      const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+      const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
       if (profiles?.[0]) {
         const existing = profiles[0].extracted_insights || "";
         const updated  = await base44.integrations.Core.InvokeLLM({
@@ -380,7 +384,7 @@ export default function CoachChat() {
 
       // Build proposed changes WITHOUT applying them
       const today    = moment().format("YYYY-MM-DD");
-      const upcoming = await base44.entities.PlannedWorkout.list("date", 20);
+      const upcoming = await base44.entities.PlannedWorkout.filter({ created_by: currentUser.email }, "date", 20);
       const future   = (upcoming || []).filter(w => w.date >= today && w.status === "planned");
       const proposed = [];
 
@@ -469,7 +473,7 @@ export default function CoachChat() {
     // Every 5 messages: extract general coaching insights
     if (sentCount % 5 === 0) {
       try {
-        const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+        const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
         if (!profiles?.[0]) return;
         const convData = await base44.agents.getConversation(conv.id);
         const recentMsgs = (convData.messages || [])

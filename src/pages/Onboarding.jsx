@@ -177,7 +177,7 @@ export default function Onboarding() {
   // Redirect if already onboarded
   useEffect(() => {
     async function checkOnboarding() {
-      const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+      const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
       if (profiles?.[0]?.onboarding_complete) navigate("/");
     }
     checkOnboarding();
@@ -259,7 +259,7 @@ export default function Onboarding() {
     });
 
     // ── Save / update athlete profile ──
-    const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+    const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
     const profileData = {
       first_name:              extracted.first_name,
       weekly_hours_available:  extracted.weekly_hours_available,
@@ -290,7 +290,7 @@ export default function Onboarding() {
     const raceTypeInfo = getRaceType(raceType);
 
     if (extracted.target_race_name && raceDate) {
-      const existingRaces = await base44.entities.Race.list("date", 5);
+      const existingRaces = await base44.entities.Race.filter({ created_by: currentUser.email }, "date", 5);
       const alreadyExists = existingRaces?.some(r => r.name === extracted.target_race_name);
       if (!alreadyExists) {
         await base44.entities.Race.create({

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ const INTENSITIES = { easy: "Easy", moderate: "Moderate", hard: "Hard", race_pac
 const CATS = ["endurance","tempo","intervals","threshold","recovery","race_simulation","technique"];
 
 export default function WorkoutLibrary() {
+  const { currentUser } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -24,7 +26,7 @@ export default function WorkoutLibrary() {
   const [form, setForm] = useState({ title:"", sport:"run", category:"endurance", duration_minutes:60, intensity:"moderate", description:"", structure:"", tss_estimate:0 });
 
   async function load() {
-    const data = await base44.entities.WorkoutTemplate.list("-created_date", 500);
+    const data = await base44.entities.WorkoutTemplate.filter({ created_by: currentUser.email }, "-created_date", 500);
     setTemplates(data || []);
     setLoading(false);
   }
@@ -49,7 +51,7 @@ export default function WorkoutLibrary() {
 
   async function generateStarters() {
     setGenerating(true);
-    const profile = (await base44.entities.AthleteProfile.list("-created_date", 1))?.[0];
+    const profile = (await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1))?.[0];
     const raceType = profile?.race_type || "custom";
     const raceInfo = getRaceType(raceType);
     const sportsList = raceInfo.sports.join(", ");

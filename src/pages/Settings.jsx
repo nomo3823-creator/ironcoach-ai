@@ -14,7 +14,7 @@ import { RACE_TYPES } from "@/lib/raceTypes";
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,7 +30,7 @@ export default function Settings() {
 
   useEffect(() => {
     async function load() {
-      const data = await base44.entities.AthleteProfile.list("-created_date", 1);
+      const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
       if (data?.[0]) {
         setProfile(data[0]);
         setForm((prev) => ({ ...prev, ...data[0] }));
@@ -70,16 +70,29 @@ export default function Settings() {
   }
 
   async function resetOnboarding() {
-    if (!window.confirm("Delete your athlete profile and restart onboarding? This cannot be undone.")) return;
+    if (!window.confirm("Delete ALL your data and restart onboarding? This cannot be undone.")) return;
     setResetting(true);
     try {
-      if (profile?.id) {
-        await base44.entities.AthleteProfile.delete(profile.id);
-      }
-      toast.success("Onboarding reset — redirecting…");
+      const [workouts, metrics, activities, races, logs, recs] = await Promise.all([
+        base44.entities.PlannedWorkout.filter({ created_by: currentUser.email }),
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }),
+        base44.entities.Activity.filter({ created_by: currentUser.email }),
+        base44.entities.Race.filter({ created_by: currentUser.email }),
+        base44.entities.PlanChangeLog.filter({ created_by: currentUser.email }),
+        base44.entities.PlanRecommendation.filter({ created_by: currentUser.email }),
+      ]);
+      await Promise.all([
+        ...workouts.map(r => base44.entities.PlannedWorkout.delete(r.id)),
+        ...metrics.map(r => base44.entities.DailyMetrics.delete(r.id)),
+        ...activities.map(r => base44.entities.Activity.delete(r.id)),
+        ...races.map(r => base44.entities.Race.delete(r.id)),
+        ...logs.map(r => base44.entities.PlanChangeLog.delete(r.id)),
+        ...recs.map(r => base44.entities.PlanRecommendation.delete(r.id)),
+      ]);
+      if (profile?.id) await base44.entities.AthleteProfile.delete(profile.id);
+      toast.success("All data reset — redirecting…");
       navigate("/onboarding");
     } catch (err) {
-      console.error("Reset onboarding failed:", err);
       toast.error(`Reset failed: ${err?.message || "unknown error"}`);
       setResetting(false);
     }
