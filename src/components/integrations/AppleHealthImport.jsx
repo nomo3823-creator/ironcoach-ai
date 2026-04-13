@@ -71,7 +71,9 @@ export default function AppleHealthImport({ onImported }) {
 
     try {
       const text = await file.text();
+      console.log('XML parsed, length:', text.length);
       const parsed = parseAppleHealthXML(text);
+      console.log('Extracted metrics:', parsed.length);
 
       if (parsed.length === 0) {
         toast({ title: "No compatible data found", description: "Make sure you selected the export.xml file from Apple Health.", variant: "destructive" });
@@ -82,19 +84,25 @@ export default function AppleHealthImport({ onImported }) {
       // Upsert into DailyMetrics
       let saved = 0;
       for (const day of parsed) {
-        const existing = await base44.entities.DailyMetrics.filter({ date: day.date });
-        if (existing.length > 0) {
-          await base44.entities.DailyMetrics.update(existing[0].id, day);
-        } else {
-          await base44.entities.DailyMetrics.create(day);
+        try {
+          const existing = await base44.entities.DailyMetrics.filter({ date: day.date });
+          if (existing.length > 0) {
+            await base44.entities.DailyMetrics.update(existing[0].id, day);
+          } else {
+            await base44.entities.DailyMetrics.create(day);
+          }
+          saved++;
+        } catch (dayErr) {
+          console.error(`Failed to save day ${day.date}:`, dayErr.message);
+          throw dayErr;
         }
-        saved++;
       }
 
       setResult({ saved });
       toast({ title: `Imported ${saved} days of health data from Apple Health` });
       onImported?.();
     } catch (err) {
+      console.error('Import error:', err);
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
     }
 
