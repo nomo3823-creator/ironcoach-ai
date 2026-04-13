@@ -149,6 +149,7 @@ function mapStravaActivity(act, ftp) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const { force } = req.method === 'POST' ? await req.json() : {};
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -195,8 +196,17 @@ Deno.serve(async (req) => {
     }
 
     // Use user-scoped entity calls so created_by is set to the user's email
-    const existing = await base44.entities.Activity.filter({ source: 'strava', created_by: user.email });
-    const existingIds = new Set(existing.map(a => a.external_id).filter(Boolean));
+    let existingIds = new Set();
+    if (!force) {
+      const existing = await base44.entities.Activity.filter({ source: 'strava', created_by: user.email });
+      existingIds = new Set(existing.map(a => a.external_id).filter(Boolean));
+    } else {
+      // Force sync: delete old Strava activities for this user
+      const existing = await base44.entities.Activity.filter({ source: 'strava', created_by: user.email });
+      for (const act of existing) {
+        await base44.entities.Activity.delete(act.id);
+      }
+    }
 
     const toCreate = stravaActivities
       .filter(a => !existingIds.has(String(a.id)))
@@ -211,7 +221,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({ synced: created, total_strava: stravaActivities.length });
+    return Response.json({ synced: created, total_strava: stravaActivities.length, force_sync: !!force });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -9,11 +9,11 @@ import moment from "moment";
 export default function RecentActivities({ activities = [], onRefresh }) {
   const [syncing, setSyncing] = useState(false);
 
-  async function handleSync() {
+  async function handleSync(force = false) {
     setSyncing(true);
     try {
-      const res = await base44.functions.invoke("stravaSync", {});
-      toast("Sync complete", { description: `${res.data?.synced || 0} new activities imported` });
+      const res = await base44.functions.invoke("stravaSync", { force });
+      toast("Sync complete", { description: `${res.data?.synced || 0} activities imported${force ? " (full refresh)" : ""}` });
       if (onRefresh) onRefresh();
     } catch (err) {
       toast("Sync failed", { description: err.message, variant: "destructive" });
@@ -34,10 +34,15 @@ export default function RecentActivities({ activities = [], onRefresh }) {
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-foreground">Recent Activities</h3>
-        <Button size="sm" variant="ghost" onClick={handleSync} disabled={syncing} className="gap-1.5 text-xs h-7">
-          {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          {syncing ? "Syncing..." : "Sync"}
-        </Button>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="ghost" onClick={() => handleSync(false)} disabled={syncing} className="gap-1.5 text-xs h-7">
+            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            {syncing ? "Syncing..." : "Sync"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => handleSync(true)} disabled={syncing} className="text-xs h-7 px-2">
+            Force Refresh
+          </Button>
+        </div>
       </div>
       <div className="space-y-2">
         {activities.slice(0, 6).map((a) => {
