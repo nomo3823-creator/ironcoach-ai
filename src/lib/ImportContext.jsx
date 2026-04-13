@@ -118,13 +118,13 @@ export function ImportProvider({ children }) {
       }));
 
       const metrics = parseResult.metrics || [];
-      const BATCH_SIZE = 10;
+      const BATCH_SIZE = 2; // Rate limit friendly
       let saved = 0;
       const errors = [];
 
       for (let i = 0; i < metrics.length; i += BATCH_SIZE) {
         const batch = metrics.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(
+        await Promise.all(
           batch.map(day =>
             saveMetricDay(day, currentUser.email).then(
               () => saved++,
@@ -139,6 +139,11 @@ export function ImportProvider({ children }) {
           percent: 50 + Math.round((saved / metrics.length) * 50),
           lastCheckpointAt: new Date().toISOString(),
         }));
+
+        // 500ms delay between batches to avoid rate limits
+        if (i + BATCH_SIZE < metrics.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
       // Mark as done
