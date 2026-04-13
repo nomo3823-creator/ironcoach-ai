@@ -140,21 +140,30 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
 
   async function load() {
     setLoading(true);
-    const [workouts, metrics, acts, races, profiles, allMetrics] = await Promise.all([
-      base44.entities.PlannedWorkout.filter({ date: today }),
-      base44.entities.DailyMetrics.filter({ date: today }),
-      base44.entities.Activity.list("-date", 20),
-      base44.entities.Race.list("date", 10),
-      base44.entities.AthleteProfile.list("-created_date", 1),
-      base44.entities.DailyMetrics.list("date", 20),
-    ]);
 
+    // Onboarding gate: check the profile FIRST so a failed peripheral fetch
+    // (e.g. a new user with no workouts/metrics yet) can't block the redirect.
+    let profiles;
+    try {
+      profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+    } catch (err) {
+      console.error("Failed to load athlete profile:", err);
+      navigate("/onboarding");
+      return;
+    }
     const p = profiles?.[0];
-    // Onboarding gate: redirect if no profile or onboarding not complete
     if (!p || !p.onboarding_complete) {
       navigate("/onboarding");
       return;
     }
+
+    const [workouts, metrics, acts, races, allMetrics] = await Promise.all([
+      base44.entities.PlannedWorkout.filter({ date: today }),
+      base44.entities.DailyMetrics.filter({ date: today }),
+      base44.entities.Activity.list("-date", 20),
+      base44.entities.Race.list("date", 10),
+      base44.entities.DailyMetrics.list("date", 20),
+    ]);
 
     setTodayWorkout(workouts?.[0] || null);
     setTodayMetrics(metrics?.[0] || null);

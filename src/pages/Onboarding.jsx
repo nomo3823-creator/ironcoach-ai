@@ -232,6 +232,7 @@ export default function Onboarding() {
     setLoading(true);
     setMessages(m => [...m, { role: "coach", content: "Building your plan now — this takes about 30–60 seconds…" }]);
 
+    try {
     // ── Extract structured data from answers ──
     const extracted = await base44.integrations.Core.InvokeLLM({
       prompt: `Extract structured athlete data from these onboarding answers:\n${JSON.stringify(answers, null, 2)}\n\nReturn the JSON object. For race_type, pick the best match from: sprint_tri, olympic_tri, 70.3, 140.6, 5k, 10k, half_marathon, marathon, ultramarathon, gran_fondo, century_ride, open_water, custom. For target_race_date, return YYYY-MM-DD format. For experience_level: beginner, intermediate, advanced, or elite.`,
@@ -347,6 +348,16 @@ export default function Onboarding() {
     setLoading(false);
     setGenProgress("");
     setPhase("done");
+    } catch (err) {
+      console.error("Onboarding confirm failed:", err);
+      setMessages(m => [...m, {
+        role: "coach",
+        content: `Something went wrong saving your profile: ${err?.message || "unknown error"}. Please try again.`,
+      }]);
+      setLoading(false);
+      setGenProgress("");
+      setPhase("confirming");
+    }
   }
 
   return (
