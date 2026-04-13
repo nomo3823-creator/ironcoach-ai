@@ -5,14 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, Plug, PlugZap, Watch, Activity, Bike, Heart, RotateCcw } from "lucide-react";
+import { Loader2, Save, Plug, PlugZap, Watch, Activity, Bike, Heart, RotateCcw, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
 import { RACE_TYPES } from "@/lib/raceTypes";
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -206,23 +208,44 @@ export default function Settings() {
         </Button>
       </form>
 
-      <section className="border-t border-border pt-6">
-        <h2 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Developer</h2>
-        <p className="text-xs text-muted-foreground mb-4">Testing utilities. Use with care.</p>
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-4">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground">Reset Onboarding</p>
-            <p className="text-xs text-muted-foreground">Deletes your athlete profile and restarts the onboarding flow.</p>
+      <section className="border-t border-border pt-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Account</h2>
+          <p className="text-xs text-muted-foreground mb-4">Sign out of your current session.</p>
+          <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Sign Out</p>
+              <p className="text-xs text-muted-foreground">Clears your session and returns you to the login screen.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => logout(true)}
+              className="shrink-0"
+            >
+              <LogOut className="h-4 w-4 mr-2" />Sign Out
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={resetOnboarding}
-            disabled={resetting}
-            className="shrink-0"
-          >
-            {resetting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Resetting…</> : <><RotateCcw className="h-4 w-4 mr-2" />Reset Onboarding</>}
-          </Button>
+        </div>
+
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Developer</h2>
+          <p className="text-xs text-muted-foreground mb-4">Testing utilities. Use with care.</p>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Reset Onboarding</p>
+              <p className="text-xs text-muted-foreground">Deletes your athlete profile and restarts the onboarding flow.</p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={resetOnboarding}
+              disabled={resetting}
+              className="shrink-0"
+            >
+              {resetting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Resetting…</> : <><RotateCcw className="h-4 w-4 mr-2" />Reset Onboarding</>}
+            </Button>
+          </div>
         </div>
       </section>
     </div>
