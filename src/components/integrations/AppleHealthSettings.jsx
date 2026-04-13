@@ -22,8 +22,17 @@ export default function AppleHealthSettings() {
   }, [currentUser]);
 
   async function handleImported() {
-    const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email });
-    setProfile(data[0] || null);
+    // Debounce: wait 1.5s for backend to settle after bulk import
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email });
+      setProfile(data[0] || null);
+    } catch (err) {
+      // Silent retry after rate limit cooldown
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email });
+      setProfile(data[0] || null);
+    }
   }
 
   const lastImport = profile?.last_apple_health_import_date ? moment(profile.last_apple_health_import_date).format('MMM D, YYYY [at] h:mm A') : null;
