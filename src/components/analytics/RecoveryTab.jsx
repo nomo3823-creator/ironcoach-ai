@@ -7,7 +7,7 @@ const SLEEP_QUALITY_COLOR = { poor: "#ef4444", fair: "#f97316", good: "#22c55e",
 
 export default function RecoveryTab({ metrics }) {
   const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1);
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = moment().format('YYYY-MM-DD');
   const last90 = sorted.filter(m => m.date <= todayStr).slice(-90);
 
   // HRV with 14-day rolling avg
