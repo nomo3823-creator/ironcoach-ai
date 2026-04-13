@@ -118,6 +118,15 @@
       "title": "Apple Health Connected",
       "default": false
     },
+    "last_apple_health_import_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Apple Health Import"
+    },
+    "apple_health_days_imported": {
+      "type": "number",
+      "title": "Days Imported from Apple Health"
+    },
     "onboarding_complete": {
       "type": "boolean",
       "title": "Onboarding Complete",

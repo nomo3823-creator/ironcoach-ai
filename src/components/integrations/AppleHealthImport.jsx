@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useImport } from "@/lib/ImportContext";
 import { Button } from "@/components/ui/button";
@@ -262,7 +263,29 @@ export default function AppleHealthImport({ onImported }) {
   const handleFile = async (file) => {
     if (!file) return;
     setStep(3);
-    importCtx.startImport(file, selectedMode);
+    await importCtx.startImport(file, selectedMode);
+    
+    // Update profile with import metadata after successful save
+    if (importCtx.status === 'done') {
+      try {
+        const profiles = await base44.entities.AthleteProfile.filter(
+          { created_by: currentUser.email },
+          "-created_date",
+          1
+        );
+        if (profiles?.[0]) {
+          await base44.entities.AthleteProfile.update(profiles[0].id, {
+            last_apple_health_import_date: new Date().toISOString(),
+            apple_health_days_imported:
+              (profiles[0].apple_health_days_imported || 0) + (importCtx.totalDays || 0),
+            apple_health_connected: true,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to update profile:', err);
+      }
+    }
+    
     onImported?.();
   };
 

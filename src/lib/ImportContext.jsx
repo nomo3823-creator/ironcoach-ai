@@ -110,7 +110,7 @@ export function ImportProvider({ children }) {
         mode
       );
 
-      // Save metrics in batches (10 at a time for speed)
+      // Save metrics in batches
       setState(prev => ({
         ...prev,
         status: 'saving',
@@ -118,6 +118,7 @@ export function ImportProvider({ children }) {
       }));
 
       const metrics = parseResult.metrics || [];
+      const workouts = parseResult.workouts || [];
       const BATCH_SIZE = 2; // Rate limit friendly
       let saved = 0;
       const errors = [];
@@ -143,6 +144,31 @@ export function ImportProvider({ children }) {
         // 500ms delay between batches to avoid rate limits
         if (i + BATCH_SIZE < metrics.length) {
           await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      // Save workouts with deduplication
+      if (workouts.length > 0) {
+        for (const workout of workouts) {
+          try {
+            const existing = await base44.entities.Activity.filter({
+              date: workout.date,
+              sport: workout.sport,
+              created_by: currentUser.email,
+            });
+            // Check for near-duplicate (within ±2 min duration)
+            const isDuplicate = existing.some(
+              a => Math.abs((a.duration_minutes || 0) - (workout.duration_minutes || 0)) <= 2
+            );
+            if (!isDuplicate) {
+              await base44.entities.Activity.create({
+                ...workout,
+                created_by: currentUser.email,
+              });
+            }
+          } catch (err) {
+            errors.push(`Workout ${workout.date}: ${err.message}`);
+          }
         }
       }
 
@@ -227,6 +253,8 @@ async function saveMetricDay(day, userEmail) {
 
   const payload = {
     ...day,
+    created_by: userEmail,
+    import_source: 'apple_health',
     imported_at: new Date().toISOString(),
   };
 
