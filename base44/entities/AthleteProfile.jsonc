@@ -85,6 +85,42 @@
       "type": "boolean",
       "title": "Apple Health Connected",
       "default": false
+    },
+    "onboarding_complete": {
+      "type": "boolean",
+      "title": "Onboarding Complete",
+      "default": false
+    },
+    "motivation_statement": {
+      "type": "string",
+      "title": "Motivation Statement"
+    },
+    "biggest_limiter": {
+      "type": "string",
+      "title": "Biggest Limiter",
+      "enum": [
+        "swim",
+        "bike",
+        "run",
+        "nutrition",
+        "mental"
+      ]
+    },
+    "injury_history": {
+      "type": "string",
+      "title": "Injury History (last 12 months)"
+    },
+    "available_training_days": {
+      "type": "string",
+      "title": "Available Training Days"
+    },
+    "extracted_insights": {
+      "type": "string",
+      "title": "AI Extracted Insights from Chat"
+    },
+    "last_morning_checkin": {
+      "type": "string",
+      "title": "Last Morning Check-in Date"
     }
   },
   "required": []

@@ -1,0 +1,70 @@
+{
+  "name": "PlanChangeLog",
+  "type": "object",
+  "properties": {
+    "workout_id": {
+      "type": "string",
+      "title": "Workout ID"
+    },
+    "change_type": {
+      "type": "string",
+      "title": "Change Type",
+      "enum": [
+        "health_metric",
+        "chat_conversation",
+        "missed_session",
+        "weekly_review",
+        "manual",
+        "hrv_drop",
+        "poor_sleep",
+        "injury_flag",
+        "ftp_update"
+      ]
+    },
+    "change_summary": {
+      "type": "string",
+      "title": "Change Summary"
+    },
+    "reason": {
+      "type": "string",
+      "title": "Reason (coach explanation)"
+    },
+    "before_title": {
+      "type": "string",
+      "title": "Before: Title"
+    },
+    "before_duration": {
+      "type": "number",
+      "title": "Before: Duration (min)"
+    },
+    "before_intensity": {
+      "type": "string",
+      "title": "Before: Intensity"
+    },
+    "after_title": {
+      "type": "string",
+      "title": "After: Title"
+    },
+    "after_duration": {
+      "type": "number",
+      "title": "After: Duration (min)"
+    },
+    "after_intensity": {
+      "type": "string",
+      "title": "After: Intensity"
+    },
+    "workout_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Workout Date"
+    },
+    "signal_value": {
+      "type": "string",
+      "title": "Signal Value (e.g. HRV: 52ms)"
+    }
+  },
+  "required": [
+    "change_type",
+    "change_summary"
+  ]
+}

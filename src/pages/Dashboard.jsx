@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useNavigate } from "react-router-dom";
 import ReadinessGauge from "../components/ui/ReadinessGauge";
 import TodayWorkoutCard from "../components/dashboard/TodayWorkoutCard";
 import QuickStats from "../components/dashboard/QuickStats";
 import MorningBrief from "../components/dashboard/MorningBrief";
 import RecentActivities from "../components/dashboard/RecentActivities";
+import CoachCheckin from "../components/dashboard/CoachCheckin";
+import { checkHrvDrop, checkPoorSleepStreak, downgradeWorkout } from "@/lib/planUtils";
 import { Loader2 } from "lucide-react";
 import moment from "moment";
 
@@ -30,6 +33,7 @@ function greeting() {
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [todayWorkout, setTodayWorkout] = useState(null);
   const [todayMetrics, setTodayMetrics] = useState(null);
@@ -44,24 +48,49 @@ export default function Dashboard() {
 
   async function load() {
     setLoading(true);
-    const [workouts, metrics, acts, races, profiles] = await Promise.all([
+    const [workouts, metrics, acts, races, profiles, allMetrics] = await Promise.all([
       base44.entities.PlannedWorkout.filter({ date: today }),
       base44.entities.DailyMetrics.filter({ date: today }),
       base44.entities.Activity.list("-date", 20),
       base44.entities.Race.list("date", 10),
       base44.entities.AthleteProfile.list("-created_date", 1),
+      base44.entities.DailyMetrics.list("date", 20),
     ]);
+
+    const p = profiles?.[0];
+    // Onboarding gate: redirect if no profile or onboarding not complete
+    if (!p || !p.onboarding_complete) {
+      navigate("/onboarding");
+      return;
+    }
 
     setTodayWorkout(workouts?.[0] || null);
     setTodayMetrics(metrics?.[0] || null);
     setActivities(acts || []);
-    setProfile(profiles?.[0] || null);
+    setProfile(p);
 
     const future = (races || []).filter((r) => moment(r.date).isAfter(moment()));
     setNextRace(future[0] || null);
 
     const weekActs = (acts || []).filter((a) => a.date >= weekStart && a.date <= weekEnd);
     setWeekStats({ hours: weekActs.reduce((s, a) => s + (a.duration_minutes || 0), 0) / 60, count: weekActs.length });
+
+    // HRV auto-downgrade check
+    const todayM = metrics?.[0];
+    const todayW = workouts?.[0];
+    if (todayM && todayW && todayW.status === "planned" && todayW.intensity !== "easy") {
+      const { shouldDowngrade, dropPct, rollingAvg } = checkHrvDrop(todayM, allMetrics || []);
+      if (shouldDowngrade) {
+        const reason = `HRV is ${todayM.hrv}ms — ${dropPct}% below your 14-day average of ${rollingAvg}ms. Downgraded today's session to recovery to protect your adaptation.`;
+        await downgradeWorkout(todayW, reason, "hrv_drop", `HRV: ${todayM.hrv}ms (avg: ${rollingAvg}ms)`);
+      } else {
+        const sleepStreak = checkPoorSleepStreak(allMetrics || []);
+        if (sleepStreak >= 3) {
+          await downgradeWorkout(todayW, `${sleepStreak} consecutive nights of poor/fair sleep detected. Reducing today’s load to support recovery.`, "poor_sleep", `Sleep streak: ${sleepStreak} nights`);
+        }
+      }
+    }
+
     setLoading(false);
   }
 
@@ -83,6 +112,8 @@ export default function Dashboard() {
       </div>
 
       <QuickStats stats={{ weeklyHours: weekStats.hours, daysToRace, raceName: nextRace?.name, ctl: todayMetrics?.ctl, activitiesThisWeek: weekStats.count }} />
+
+      <CoachCheckin profile={profile} metrics={todayMetrics} workout={todayWorkout} />
 
       <div className="grid lg:grid-cols-3 gap-5">
         {/* Left col */}

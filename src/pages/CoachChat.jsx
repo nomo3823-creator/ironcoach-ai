@@ -60,11 +60,43 @@ export default function CoachChat() {
     const msg = (text || input).trim();
     if (!msg || sending) return;
     let conv = active;
-    if (!conv) { await newConv(); return; }
+    if (!conv) {
+      const c = await base44.agents.createConversation({
+        agent_name: "iron_coach",
+        metadata: { name: `Session ${new Date().toLocaleDateString("en", { month:"short", day:"numeric" })}` },
+      });
+      setConvs((p) => [c, ...p]);
+      setActive(c);
+      setMessages([]);
+      conv = c;
+    }
     setSending(true);
     setInput("");
     await base44.agents.addMessage(conv, { role: "user", content: msg });
+
+    // Background: extract insights from message and update profile
+    extractInsightsInBackground(msg);
     setSending(false);
+  }
+
+  async function extractInsightsInBackground(userMessage) {
+    const keywords = ["pain", "hurt", "sore", "tired", "exhausted", "sick", "injury", "knee", "hamstring", "shoulder", "ankle", "fatigue", "stress", "struggling", "missed"];
+    const hasSignal = keywords.some((k) => userMessage.toLowerCase().includes(k));
+    if (!hasSignal) return;
+
+    const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+    if (!profiles?.[0]) return;
+
+    const existing = profiles[0].extracted_insights || "";
+    const updated = await base44.integrations.Core.InvokeLLM({
+      prompt: `An athlete said: "${userMessage}"
+
+Existing insights: ${existing}
+
+Extract any new health/fatigue/injury signals as a concise 1-2 sentence addition to the existing notes. Only add genuinely new information. Return the full updated insights string.`,
+    });
+
+    await base44.entities.AthleteProfile.update(profiles[0].id, { extracted_insights: updated });
   }
 
   return (

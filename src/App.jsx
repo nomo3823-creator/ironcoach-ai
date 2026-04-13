@@ -14,6 +14,7 @@ import WorkoutLibrary from './pages/WorkoutLibrary';
 import CoachChat from './pages/CoachChat';
 import Settings from './pages/Settings';
 import LogMetrics from './pages/LogMetrics';
+import Onboarding from './pages/Onboarding';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -41,6 +42,7 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
   <Routes>
+    <Route path="/onboarding" element={<Onboarding />} />
     <Route element={<Layout />}>
       <Route path="/" element={<Dashboard />} />
       <Route path="/plan" element={<TrainingPlan />} />
