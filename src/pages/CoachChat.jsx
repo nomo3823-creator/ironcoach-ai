@@ -283,21 +283,15 @@ export default function CoachChat() {
     e.stopPropagation();
     if (!confirm("Delete this chat?")) return;
     try {
-      console.log("Deleting conversation:", id);
       await base44.agents.deleteConversation(id);
-      console.log("Delete successful, reloading conversations");
       setConvs(p => p.filter(c => c.id !== id));
       if (active?.id === id) {
         setActive(null);
         setMessages([]);
       }
-      // Reload conversations to sync with backend
-      setLoadingConvs(true);
-      await loadConvs();
       toast.success("Chat deleted");
     } catch (err) {
       console.error("Delete failed:", err);
-      setLoadingConvs(false);
       toast.error(err?.message || "Could not delete chat");
     }
   }
