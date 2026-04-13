@@ -1,11 +1,12 @@
 import React from 'react';
 import { useImport } from '@/lib/ImportContext';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 export default function ImportProgressPill() {
   const importCtx = useImport();
+  const navigate = useNavigate();
 
   if (!importCtx || importCtx.status === 'idle' || importCtx.status === 'done') {
     return null;
@@ -78,11 +79,14 @@ export default function ImportProgressPill() {
 
         {/* Actions */}
         <div className="flex gap-2 mt-3">
-          <Link to="/integrations" className="flex-1">
-            <Button size="sm" variant="outline" className="w-full text-xs">
-              View Details
-            </Button>
-          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/integrations')}
+            className="flex-1 text-xs"
+          >
+            View Details
+          </Button>
           {isError && (
             <Button
               size="sm"
