@@ -1,12 +1,10 @@
 import React from 'react';
 import { useImport } from '@/lib/ImportContext';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 export default function ImportProgressPill() {
   const importCtx = useImport();
-  const navigate = useNavigate();
 
   if (!importCtx || importCtx.status === 'idle' || importCtx.status === 'done') {
     return null;
@@ -82,7 +80,7 @@ export default function ImportProgressPill() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate('/integrations')}
+            onClick={() => window.location.href = '/integrations'}
             className="flex-1 text-xs"
           >
             View Details
