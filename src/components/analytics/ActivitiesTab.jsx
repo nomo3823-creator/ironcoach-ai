@@ -101,8 +101,15 @@ export default function ActivitiesTab({ activities }) {
 
   const sports = ["all", ...["swim", "bike", "run"].filter(s => activities.some(a => a.sport === s))];
 
+  const seen = new Set();
   const filtered = activities
     .filter(a => sportFilter === "all" || a.sport === sportFilter)
+    .filter(a => {
+      const key = `${a.date}-${a.external_id || a.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .sort((a, b) => b.date > a.date ? 1 : -1);
 
   const paginated = filtered.slice(0, (page + 1) * PAGE_SIZE);

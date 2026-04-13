@@ -5,7 +5,16 @@ import DailyRecommendationWidget from "./DailyRecommendationWidget";
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
 
 export default function SwimTab({ activities, metrics, profile }) {
-  const swims = activities.filter(a => a.sport === "swim" && a.date).sort((a, b) => a.date > b.date ? 1 : -1);
+  const seen = new Set();
+  const swims = activities
+    .filter(a => a.sport === "swim" && a.date)
+    .filter(s => {
+      const key = `${s.date}-${s.external_id || s.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.date > b.date ? 1 : -1);
 
   // Pace per 100m trend
   const paceTrend = swims.filter(r => r.avg_pace_per_100m || (r.avg_pace && r.distance_km)).map(r => {

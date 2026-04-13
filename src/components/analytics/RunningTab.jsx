@@ -17,7 +17,16 @@ function secsToMinKm(s) {
 }
 
 export default function RunningTab({ activities, metrics, profile }) {
-  const runs = activities.filter(a => a.sport === "run" && a.date).sort((a, b) => a.date > b.date ? 1 : -1);
+  const seen = new Set();
+  const runs = activities
+    .filter(a => a.sport === "run" && a.date)
+    .filter(r => {
+      const key = `${r.date}-${r.external_id || r.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.date > b.date ? 1 : -1);
 
   // Pace trend
   const paceTrend = runs.slice(-30).map(r => {

@@ -6,7 +6,16 @@ import DailyRecommendationWidget from "./DailyRecommendationWidget";
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
 
 export default function CyclingTab({ activities, metrics, profile }) {
-  const rides = activities.filter(a => a.sport === "bike" && a.date).sort((a, b) => a.date > b.date ? 1 : -1);
+  const seen = new Set();
+  const rides = activities
+    .filter(a => a.sport === "bike" && a.date)
+    .filter(r => {
+      const key = `${r.date}-${r.external_id || r.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.date > b.date ? 1 : -1);
   const ftp = profile?.current_ftp;
 
   // NP trend
