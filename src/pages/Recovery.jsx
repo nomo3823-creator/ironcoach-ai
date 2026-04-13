@@ -18,6 +18,7 @@ export default function Recovery() {
   const { importVersion } = useImport();
   const [loading, setLoading] = useState(true);
   const [todayMetrics, setTodayMetrics] = useState(null);
+  const [metricsDate, setMetricsDate] = useState(null);
   const [completedCheckin, setCompletedCheckin] = useState(false);
   const [sleepQuality, setSleepQuality] = useState("");
   const [energy, setEnergy] = useState(0);
@@ -34,20 +35,37 @@ export default function Recovery() {
   async function loadData() {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const [tData, metricsData, activitiesData] = await Promise.all([
-        base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
-        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 30),
+      
+      // First try today's metrics
+      let metricsResult = await base44.entities.DailyMetrics.filter({ 
+        date: today, 
+        created_by: currentUser.email 
+      });
+      
+      // If nothing for today, get the most recent record
+      if (!metricsResult || metricsResult.length === 0) {
+        const recent = await base44.entities.DailyMetrics.filter(
+          { created_by: currentUser.email },
+          '-date',
+          3
+        );
+        metricsResult = recent || [];
+      }
+      
+      const [activitiesData] = await Promise.all([
         base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 30),
       ]);
-      const m = tData?.[0];
+      
+      const m = metricsResult[0];
       setTodayMetrics(m || null);
+      setMetricsDate(m?.date || null);
       setCompletedCheckin(m?.morning_checkin_complete || false);
       setSleepQuality(m?.sleep_quality || "");
       setEnergy(m?.energy_level || 0);
       setLegsFeel(m?.legs_feeling || "");
-      setAllMetrics(metricsData || []);
+      setAllMetrics(metricsResult || []);
       setActivities(activitiesData || []);
-      const readinessScore = calculateReadiness(metricsData || [], activitiesData || []);
+      const readinessScore = calculateReadiness(metricsResult || [], activitiesData || []);
       setReadiness(readinessScore);
     } catch (err) {
       toast.error("Failed to load Recovery data");
@@ -174,33 +192,71 @@ export default function Recovery() {
       {/* Readiness Breakdown */}
       <ReadinessBreakdown readiness={readiness} />
 
+      {/* Empty state when no Apple Health data exists */}
+      {!todayMetrics && allMetrics.length === 0 && (
+        <Card className="bg-secondary/30 p-6 space-y-4 border-dashed">
+          <div className="text-center space-y-2">
+            <div className="text-4xl mb-2">🍎</div>
+            <h3 className="text-lg font-semibold text-foreground">No health metrics yet</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              Import your Apple Health data to see HRV trends, sleep analysis, and your readiness score. Takes 2-4 minutes.
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Button onClick={() => navigate("/integrations")}>
+              Import Apple Health Data
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Recovery Metrics */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-foreground">Recovery Metrics</h2>
+        
+        {/* Show "data from" label if metrics are from a previous day */}
+        {metricsDate && metricsDate !== new Date().toISOString().split("T")[0] && (
+          <p className="text-xs text-muted-foreground">
+            Showing data from {moment(metricsDate).format("MMM D")} — today's data not yet available
+          </p>
+        )}
+        
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Card className="p-4 space-y-1">
             <p className="text-xs text-muted-foreground">HRV</p>
-            <p className="text-2xl font-bold text-foreground">{todayMetrics?.hrv || "—"}ms</p>
+            <p className="text-2xl font-bold text-foreground">
+              {todayMetrics?.hrv && todayMetrics.hrv > 0 ? `${todayMetrics.hrv}ms` : '—'}
+            </p>
           </Card>
           <Card className="p-4 space-y-1">
             <p className="text-xs text-muted-foreground">Sleep</p>
-            <p className="text-2xl font-bold text-foreground">{todayMetrics?.sleep_hours || "—"}h</p>
+            <p className="text-2xl font-bold text-foreground">
+              {todayMetrics?.sleep_hours && todayMetrics.sleep_hours > 0 ? `${todayMetrics.sleep_hours}h` : '—'}
+            </p>
           </Card>
           <Card className="p-4 space-y-1">
             <p className="text-xs text-muted-foreground">Resting HR</p>
-            <p className="text-2xl font-bold text-foreground">{todayMetrics?.resting_hr || "—"}bpm</p>
+            <p className="text-2xl font-bold text-foreground">
+              {todayMetrics?.resting_hr && todayMetrics.resting_hr > 0 ? `${todayMetrics.resting_hr}bpm` : '—'}
+            </p>
           </Card>
           <Card className="p-4 space-y-1">
             <p className="text-xs text-muted-foreground">SpO2</p>
-            <p className="text-2xl font-bold text-foreground">{todayMetrics?.spo2 || "—"}%</p>
+            <p className="text-2xl font-bold text-foreground">
+              {todayMetrics?.spo2 && todayMetrics.spo2 > 0 ? `${todayMetrics.spo2}%` : '—'}
+            </p>
           </Card>
           <Card className="p-4 space-y-1">
             <p className="text-xs text-muted-foreground">Body Battery</p>
-            <p className="text-2xl font-bold text-foreground">{todayMetrics?.body_battery || "—"}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {todayMetrics?.body_battery && todayMetrics.body_battery > 0 ? `${todayMetrics.body_battery}/100` : '—'}
+            </p>
           </Card>
           <Card className="p-4 space-y-1">
             <p className="text-xs text-muted-foreground">Readiness</p>
-            <p className="text-2xl font-bold text-foreground">{todayMetrics?.readiness_score || "—"}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {todayMetrics?.readiness_score && todayMetrics.readiness_score > 0 ? `${todayMetrics.readiness_score}/100` : '—'}
+            </p>
           </Card>
         </div>
       </div>

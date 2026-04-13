@@ -29,14 +29,28 @@ export default function ReadinessBreakdown({ readiness }) {
   const signals = [];
 
   // 1. HRV
-  if (readiness.breakdown.hrv_baseline) {
+  const hrvToday = readiness.breakdown.hrv_today;
+  const hrvBaseline = readiness.breakdown.hrv_baseline;
+  const hrvRatio = readiness.breakdown.hrv_ratio;
+  
+  if (hrvBaseline && hrvToday && hrvToday > 0) {
+    // Cap percentage at ±200% to avoid absurd displays
+    const displayRatio = hrvRatio && Math.abs(hrvRatio) > 200 ? (hrvRatio >= 0 ? 200 : -200) : hrvRatio;
     signals.push({
       name: "HRV",
       earned: readiness.breakdown.hrv,
       max: 15,
       tooltip: "out of 15",
       alert: readiness.breakdown.apple_watch_hrv_alert,
-      explanation: `HRV ${readiness.breakdown.hrv_today}ms is ${Math.round(readiness.breakdown.hrv_ratio * 100)}% ${readiness.breakdown.hrv_ratio >= 1 ? "above" : "below"} your 14-day baseline of ${readiness.breakdown.hrv_baseline}ms`,
+      explanation: `HRV ${hrvToday}ms is ${Math.round(displayRatio)}% ${hrvRatio >= 0 ? "above" : "below"} your 14-day baseline of ${hrvBaseline}ms`,
+    });
+  } else if (hrvBaseline && (!hrvToday || hrvToday === 0)) {
+    signals.push({
+      name: "HRV",
+      earned: 0,
+      max: 15,
+      tooltip: "out of 15",
+      explanation: "No HRV reading today — connect Apple Health to track",
     });
   } else {
     signals.push({
@@ -49,58 +63,62 @@ export default function ReadinessBreakdown({ readiness }) {
   }
 
   // 2. Sleep duration
+  const sleepHours = readiness.breakdown.sleep_hours_value || readiness.breakdown.sleep_hours;
   const sleepLabel =
-    readiness.breakdown.sleep_hours >= 7
+    sleepHours && sleepHours >= 7
       ? "good"
-      : readiness.breakdown.sleep_hours >= 6
+      : sleepHours && sleepHours >= 6
         ? "short"
         : "inadequate";
   signals.push({
     name: "Sleep Duration",
-    earned: readiness.breakdown.sleep_hours_pts,
+    earned: readiness.breakdown.sleep_hours,
     max: 10,
     tooltip: "out of 10",
-    explanation: `Slept ${readiness.breakdown.sleep_hours}h — ${sleepLabel}`,
+    explanation: sleepHours ? `Slept ${sleepHours}h — ${sleepLabel}` : "No sleep data",
   });
 
   // 3. Sleep quality
   signals.push({
     name: "Sleep Quality",
-    earned: readiness.breakdown.sleep_quality_pts,
+    earned: readiness.breakdown.sleep_quality,
     max: 10,
     tooltip: "out of 10",
     alert: readiness.breakdown.poor_sleep_alert,
     explanation: readiness.breakdown.poor_sleep_alert
       ? "Poor sleep flagged — recovery compromised"
-      : `Quality: ${readiness.breakdown.sleep_quality || "good"}`,
+      : `Quality: ${readiness.breakdown.sleep_quality_value || readiness.breakdown.sleep_quality || "good"}`,
   });
 
   // 4. Body battery (omit if no data)
-  if (readiness.breakdown.body_battery !== null && readiness.breakdown.body_battery !== undefined) {
+  const bodyBattery = readiness.breakdown.body_battery_value;
+  if (bodyBattery !== null && bodyBattery !== undefined && bodyBattery > 0) {
     const batteryLabel =
-      readiness.breakdown.body_battery >= 80
+      bodyBattery >= 80
         ? "fresh"
-        : readiness.breakdown.body_battery >= 60
+        : bodyBattery >= 60
           ? "rested"
           : "depleted";
     signals.push({
       name: "Body Battery",
-      earned: readiness.breakdown.body_battery_pts,
+      earned: readiness.breakdown.body_battery,
       max: 10,
       tooltip: "out of 10",
-      explanation: `${readiness.breakdown.body_battery}/100 — ${batteryLabel}`,
+      explanation: `${bodyBattery}/100 — ${batteryLabel}`,
     });
   }
 
   // 5. Resting HR (omit if no data)
-  if (readiness.breakdown.rhr_baseline && readiness.breakdown.rhr_today) {
-    const diff = readiness.breakdown.rhr_today - readiness.breakdown.rhr_baseline;
+  const rhrToday = readiness.breakdown.rhr_today;
+  const rhrBaseline = readiness.breakdown.rhr_baseline;
+  if (rhrBaseline && rhrToday && rhrToday > 0) {
+    const diff = rhrToday - rhrBaseline;
     signals.push({
       name: "Resting HR",
-      earned: readiness.breakdown.resting_hr_pts,
+      earned: readiness.breakdown.resting_hr,
       max: 5,
       tooltip: "out of 5",
-      explanation: `Resting HR ${readiness.breakdown.rhr_today}bpm vs ${readiness.breakdown.rhr_baseline}bpm baseline (${diff > 0 ? "+" : ""}${diff}bpm)`,
+      explanation: `Resting HR ${rhrToday}bpm vs ${rhrBaseline}bpm baseline (${diff > 0 ? "+" : ""}${diff}bpm)`,
     });
   }
 

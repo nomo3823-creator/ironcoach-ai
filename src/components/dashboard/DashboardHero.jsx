@@ -2,16 +2,32 @@ import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import moment from "moment";
 import { toast } from "sonner";
 
-export default function DashboardHero({ profile, race, readiness }) {
+export default function DashboardHero({ profile, race, readiness, currentUser }) {
   const [syncTime, setSyncTime] = useState(null);
   const [syncing, setSyncing] = useState(false);
 
+  function formatRelativeTime(isoString) {
+    if (!isoString) return null;
+    const diff = Date.now() - new Date(isoString).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 2) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+
   useEffect(() => {
-    const last = profile?.last_strava_sync ? moment(profile.last_strava_sync).fromNow() : "never";
-    setSyncTime(last);
+    const syncText = profile?.last_strava_sync 
+      ? formatRelativeTime(profile.last_strava_sync)
+      : profile?.strava_connected 
+        ? 'connected — tap to sync'
+        : null;
+    setSyncTime(syncText);
   }, [profile]);
 
   async function handleSync() {
@@ -45,7 +61,12 @@ export default function DashboardHero({ profile, race, readiness }) {
   };
 
   const todayDate = moment().format("dddd, MMM D");
-  const firstName = profile?.first_name || "Athlete";
+  // Priority order: AthleteProfile.first_name -> Auth user full_name -> Email prefix -> "Athlete"
+  const firstName = 
+    profile?.first_name ||                              
+    currentUser?.full_name?.split(' ')[0] ||            
+    currentUser?.email?.split('@')[0] ||                
+    'Athlete';
   
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -76,7 +97,13 @@ export default function DashboardHero({ profile, race, readiness }) {
           )}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Strava synced {syncTime || "..."}</span>
+          <span>
+            {syncTime 
+              ? `Strava synced ${syncTime}`
+              : profile?.strava_connected
+                ? 'Strava connected — tap to sync'
+                : 'Connect Strava in Integrations'}
+          </span>
           <Button
             size="icon"
             variant="ghost"

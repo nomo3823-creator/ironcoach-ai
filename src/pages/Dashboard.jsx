@@ -34,6 +34,7 @@ export default function Dashboard() {
   const { lastImportedAt, importVersion } = useImport();
   const [profile, setProfile] = useState(null);
   const [todayMetrics, setTodayMetrics] = useState(null);
+  const [metricsDate, setMetricsDate] = useState(null);
   const [activities, setActivities] = useState([]);
   const [plannedWorkout, setPlannedWorkout] = useState(null);
   const [race, setRace] = useState(null);
@@ -58,9 +59,24 @@ export default function Dashboard() {
       const weekStart = moment().startOf('isoWeek').format('YYYY-MM-DD');
       const weekEnd = moment().endOf('isoWeek').format('YYYY-MM-DD');
 
-      const [profileData, metricsData, activitiesData, raceData, recData, journalData, weekWorkoutsData, allMetricsData] = await Promise.all([
+      // First try today's metrics
+      let metricsResult = await base44.entities.DailyMetrics.filter({ 
+        date: today, 
+        created_by: currentUser.email 
+      });
+      
+      // If nothing for today, get the most recent record (last 3 days)
+      if (!metricsResult || metricsResult.length === 0) {
+        const recent = await base44.entities.DailyMetrics.filter(
+          { created_by: currentUser.email },
+          '-date',
+          3
+        );
+        metricsResult = recent || [];
+      }
+
+      const [profileData, activitiesData, raceData, recData, journalData, weekWorkoutsData, allMetricsData] = await Promise.all([
         base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1),
-        base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
         base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 20),
         base44.entities.Race.filter({ created_by: currentUser.email }, "date", 10),
         base44.entities.PlanRecommendation.filter({ created_by: currentUser.email, status: "pending" }),
@@ -70,7 +86,8 @@ export default function Dashboard() {
       ]);
 
       setProfile(profileData[0] || null);
-      setTodayMetrics(metricsData[0] || null);
+      setTodayMetrics(metricsResult[0] || null);
+      setMetricsDate(metricsResult[0]?.date || null);
       setActivities(activitiesData || []);
       setRace(raceData?.sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null);
       setPendingRecs(recData || []);
@@ -127,7 +144,7 @@ export default function Dashboard() {
       <div className="hidden lg:grid lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto">
         {/* LEFT COLUMN (wider) */}
         <div className="lg:col-span-2 space-y-6">
-          <DashboardHero profile={profile} race={race} readiness={readiness} />
+          <DashboardHero profile={profile} race={race} readiness={readiness} currentUser={currentUser} />
           <QuickStats stats={stats} />
           {pendingRecs.length > 0 && (
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start justify-between gap-4">
@@ -202,7 +219,7 @@ export default function Dashboard() {
 
       {/* Mobile: single column */}
       <div className="lg:hidden space-y-6 p-4">
-        <DashboardHero profile={profile} race={race} readiness={readiness} />
+        <DashboardHero profile={profile} race={race} readiness={readiness} currentUser={currentUser} />
         <QuickStats stats={stats} />
         {pendingRecs.length > 0 && (
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start justify-between gap-4">

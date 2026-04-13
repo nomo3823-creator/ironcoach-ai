@@ -26,7 +26,7 @@ export function calculateReadiness(metrics = [], activities = []) {
   };
 
   // VO2 Max (display-only signal from Apple Health)
-  if (today?.vo2_max) {
+  if (today?.vo2_max && today.vo2_max > 0) {
     breakdown.vo2_max = today.vo2_max;
   }
 
@@ -34,57 +34,67 @@ export function calculateReadiness(metrics = [], activities = []) {
 
   // HRV (15 pts) — 7-day rolling mean vs 14-day baseline (more robust)
   const todayStr = today?.date || new Date().toISOString().split('T')[0];
-  const last14 = sorted.filter(m => m.hrv > 0 && m.date <= todayStr).slice(-14);
-  const last7hrv = sorted.filter(m => m.hrv > 0 && m.date <= todayStr).slice(-7);
+  const last14 = sorted.filter(m => m.hrv && m.hrv > 0 && m.date <= todayStr).slice(-14);
+  const last7hrv = sorted.filter(m => m.hrv && m.hrv > 0 && m.date <= todayStr).slice(-7);
+  const todayHRV = today?.hrv && today.hrv > 0 ? today.hrv : null;
+  
   if (last14.length >= 3 && last7hrv.length >= 2) {
     const baseline14 = last14.reduce((s, m) => s + m.hrv, 0) / last14.length;
     const rolling7mean = last7hrv.reduce((s, m) => s + m.hrv, 0) / last7hrv.length;
     const ratio = rolling7mean / baseline14;
     breakdown.hrv = ratio >= 1.02 ? 15 : ratio >= 0.97 ? 12 : ratio >= 0.92 ? 8 : ratio >= 0.85 ? 4 : 0;
     breakdown.hrv_baseline = Math.round(baseline14);
-    breakdown.hrv_today = today?.hrv || 0;
+    breakdown.hrv_today = todayHRV || 0;
     breakdown.hrv_ratio = Math.round((ratio - 1) * 100);
     // Flag if 7-day mean is more than 8% below baseline (research threshold)
     if (ratio < 0.92) breakdown.apple_watch_hrv_alert = true;
-  } else if (today?.hrv) {
+  } else if (todayHRV) {
     breakdown.hrv = 10;
   }
 
   // Sleep hours (10 pts)
-  if (today?.sleep_hours) {
-    const h = today.sleep_hours;
+  const todaySleep = today?.sleep_hours && today.sleep_hours > 0 ? today.sleep_hours : null;
+  if (todaySleep) {
+    const h = todaySleep;
     breakdown.sleep_hours = h >= 8 ? 10 : h >= 7 ? 8 : h >= 6 ? 5 : 0;
+    breakdown.sleep_hours_value = h;
   }
 
   // Sleep quality (10 pts) — Apple Health sleep analysis
   const sqMap = { excellent: 10, good: 8, fair: 4, poor: 0 };
   breakdown.sleep_quality = sqMap[today?.sleep_quality] ?? 0;
+  breakdown.sleep_quality_value = today?.sleep_quality || null;
 
   // If sleep was poor, additional fatigue signal
-  if (today?.sleep_quality === 'poor' || (today?.sleep_hours && today.sleep_hours < 6)) {
+  if (today?.sleep_quality === 'poor' || (todaySleep && todaySleep < 6)) {
     breakdown.poor_sleep_alert = true;
   }
 
   // Body battery (10 pts)
-  if (today?.body_battery) {
-    const bb = today.body_battery;
+  const todayBB = today?.body_battery && today.body_battery > 0 ? today.body_battery : null;
+  if (todayBB) {
+    const bb = todayBB;
     breakdown.body_battery = bb >= 80 ? 10 : bb >= 60 ? 8 : bb >= 40 ? 5 : 0;
+    breakdown.body_battery_value = bb;
   }
 
   // Resting HR (5 pts) — Apple Health resting HR
-  const restHRs = sorted.slice(0, 14).filter(m => m.resting_hr > 0);
-  if (today?.resting_hr && restHRs.length >= 3) {
+  const restHRs = sorted.slice(0, 14).filter(m => m.resting_hr && m.resting_hr > 0);
+  const todayRHR = today?.resting_hr && today.resting_hr > 0 ? today.resting_hr : null;
+  if (todayRHR && restHRs.length >= 3) {
     const baseline = restHRs.slice(1).reduce((s, m) => s + m.resting_hr, 0) / (restHRs.length - 1);
-    const diff = today.resting_hr - baseline;
+    const diff = todayRHR - baseline;
     breakdown.resting_hr = diff <= 0 ? 5 : diff <= 5 ? 3 : 0;
     breakdown.rhr_baseline = Math.round(baseline);
-    breakdown.rhr_today = today.resting_hr;
+    breakdown.rhr_today = todayRHR;
   }
 
   // SpO2 signal (additional recovery metric from Apple Health)
-  if (today?.spo2 && today.spo2 < 94) {
+  const todaySpO2 = today?.spo2 && today.spo2 > 0 ? today.spo2 : null;
+  if (todaySpO2 && todaySpO2 < 94) {
     breakdown.low_spo2_alert = true;
-    breakdown.spo2_penalty = today.spo2 < 93 ? 10 : 5;
+    breakdown.spo2_penalty = todaySpO2 < 93 ? 10 : 5;
+    breakdown.low_spo2_value = todaySpO2;
   }
 
   // ── TRAINING LOAD SIGNALS (50pts) ─────────────────────────────────────────
@@ -139,13 +149,35 @@ export function calculateReadiness(metrics = [], activities = []) {
   const capped = Math.min(100, Math.max(0, score));
   const band = getBand(capped);
 
+  // Check if we have real data (not just zeros)
+  const hasRealData = (
+    (breakdown.hrv > 0) ||
+    (breakdown.sleep_hours > 0) ||
+    (breakdown.body_battery > 0) ||
+    (breakdown.tsb !== 0) ||
+    (today?.hrv && today.hrv > 0) ||
+    (today?.sleep_hours && today.sleep_hours > 0) ||
+    (today?.body_battery && today.body_battery > 0)
+  );
+
+  if (!hasRealData) {
+    return {
+      score: 0,
+      label: 'No data',
+      color: '#6b7280',
+      description: 'Connect Apple Health or log your morning metrics to see your readiness score.',
+      breakdown,
+      hasData: false,
+    };
+  }
+
   return {
     score: capped,
     label: band.label,
     color: band.color,
     description: band.description,
     breakdown,
-    hasData: today !== undefined,
+    hasData: true,
   };
 }
 

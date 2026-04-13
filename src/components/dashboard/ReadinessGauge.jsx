@@ -1,10 +1,30 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export default function ReadinessGauge({ readiness }) {
   if (!readiness) {
     return (
       <div className="rounded-2xl border border-border bg-card p-6 h-64 animate-pulse">
         <div className="h-full bg-secondary/20 rounded" />
+      </div>
+    );
+  }
+
+  // Show empty state when no data available
+  if (!readiness.hasData) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
+        <div className="text-3xl mb-2">📊</div>
+        <h3 className="text-sm font-semibold text-foreground">No readiness data yet</h3>
+        <p className="text-xs text-muted-foreground">
+          Import Apple Health data or complete your morning check-in to see your readiness score.
+        </p>
+        <Link to="/recovery">
+          <Button size="sm" variant="outline" className="w-full">
+            Log Metrics
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -49,18 +69,18 @@ export default function ReadinessGauge({ readiness }) {
 
       {/* Signal bars */}
       <div className="space-y-1.5 pt-2 border-t border-border">
-        {readiness.breakdown?.hrv_baseline && (
+        {readiness.breakdown?.hrv_baseline && readiness.breakdown?.hrv_today && readiness.breakdown.hrv_today > 0 && (
           <div className="flex justify-between items-center text-xs">
             <span className="text-muted-foreground">HRV {readiness.breakdown.hrv_today}ms</span>
-            <span className={readiness.breakdown.hrv_ratio > 0 ? "text-recovery" : "text-destructive"}>
-              {readiness.breakdown.hrv_ratio > 0 ? "↑" : "↓"} {Math.abs(readiness.breakdown.hrv_ratio)}%
+            <span className={readiness.breakdown.hrv_ratio && readiness.breakdown.hrv_ratio > 0 ? "text-recovery" : "text-destructive"}>
+              {readiness.breakdown.hrv_ratio && readiness.breakdown.hrv_ratio > 0 ? "↑" : "↓"} {Math.abs(readiness.breakdown.hrv_ratio || 0)}%
             </span>
           </div>
         )}
-        {readiness.breakdown?.sleep_hours && (
+        {readiness.breakdown?.sleep_hours_value && (
           <div className="flex justify-between items-center text-xs">
-            <span className="text-muted-foreground">Sleep {readiness.breakdown.sleep_hours}h</span>
-            <span className="text-foreground">{readiness.breakdown.sleep_quality}</span>
+            <span className="text-muted-foreground">Sleep {readiness.breakdown.sleep_hours_value}h</span>
+            <span className="text-foreground">{readiness.breakdown.sleep_quality_value || readiness.breakdown.sleep_quality}</span>
           </div>
         )}
         {readiness.breakdown?.tsb_value !== undefined && (
