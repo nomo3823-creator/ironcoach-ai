@@ -122,6 +122,7 @@ export default function Onboarding() {
       motivation_statement: extracted.motivation_statement,
       experience_level: extracted.experience_level || "intermediate",
       onboarding_complete: true,
+      onboarding_raw_answers: JSON.stringify(answers),
     };
 
     let profileId;

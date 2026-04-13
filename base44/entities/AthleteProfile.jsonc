@@ -121,6 +121,14 @@
     "last_morning_checkin": {
       "type": "string",
       "title": "Last Morning Check-in Date"
+    },
+    "onboarding_raw_answers": {
+      "type": "string",
+      "title": "Onboarding Raw Answers (JSON)"
+    },
+    "last_weekly_review_date": {
+      "type": "string",
+      "title": "Last Weekly Review Date"
     }
   },
   "required": []

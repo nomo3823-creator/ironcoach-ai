@@ -46,6 +46,88 @@ export default function Dashboard() {
   const weekStart = moment().startOf("isoWeek").format("YYYY-MM-DD");
   const weekEnd = moment().endOf("isoWeek").format("YYYY-MM-DD");
 
+  async function weeklyReview(profile) {
+    const today = moment().format("YYYY-MM-DD");
+    if (profile.last_weekly_review_date === today) return; // already ran today
+
+    const weekStart = moment().subtract(7, "days").format("YYYY-MM-DD");
+    const [pastWorkouts, pastMetrics] = await Promise.all([
+      base44.entities.PlannedWorkout.list("date", 50),
+      base44.entities.DailyMetrics.list("date", 14),
+    ]);
+
+    const weekWorkouts = pastWorkouts.filter((w) => w.date >= weekStart && w.date < today);
+    const completed = weekWorkouts.filter((w) => w.status === "completed").length;
+    const missed = weekWorkouts.filter((w) => w.status === "skipped" || (w.status === "planned" && w.date < today)).length;
+    const compliance = weekWorkouts.length > 0 ? Math.round((completed / weekWorkouts.length) * 100) : 0;
+
+    const weekMetrics = pastMetrics.filter((m) => m.date >= weekStart && m.date < today);
+    const avgHrv = weekMetrics.length > 0 ? Math.round(weekMetrics.reduce((s, m) => s + (m.hrv || 0), 0) / weekMetrics.filter(m => m.hrv).length) : null;
+
+    const nextWeekWorkouts = pastWorkouts.filter((w) => w.date >= today && w.date <= moment().add(7, "days").format("YYYY-MM-DD") && w.status === "planned").slice(0, 14);
+
+    const review = await base44.integrations.Core.InvokeLLM({
+      prompt: `Weekly training review for an Ironman athlete.
+Last week: ${completed} completed, ${missed} missed (${compliance}% compliance). Average HRV: ${avgHrv || "unknown"}ms.
+Profile: FTP ${profile.current_ftp || "unknown"}W, limiter: ${profile.biggest_limiter || "unknown"}.
+Next week planned workouts: ${JSON.stringify(nextWeekWorkouts.map(w => ({ id: w.id, date: w.date, title: w.title, duration: w.duration_minutes, intensity: w.intensity })))}
+Assess last week and return JSON adjustments for next week. If compliance < 70% or HRV trending down, reduce load. If compliance > 90%, consider adding volume.`,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          summary: { type: "string" },
+          adjustments: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                workout_id: { type: "string" },
+                new_duration_minutes: { type: "number" },
+                new_intensity: { type: "string" },
+                adjustment_reason: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Apply adjustments
+    for (const adj of (review?.adjustments || [])) {
+      if (!adj.workout_id) continue;
+      await base44.entities.PlannedWorkout.update(adj.workout_id, {
+        duration_minutes: adj.new_duration_minutes,
+        intensity: adj.new_intensity,
+        ai_adjustment_reason: adj.adjustment_reason,
+        status: "modified",
+      });
+      await base44.entities.PlanChangeLog.create({
+        workout_id: adj.workout_id,
+        change_type: "weekly_review",
+        change_summary: adj.adjustment_reason,
+        reason: review.summary,
+        after_duration: adj.new_duration_minutes,
+        after_intensity: adj.new_intensity,
+        signal_value: `Compliance: ${compliance}%, Avg HRV: ${avgHrv || "—"}ms`,
+      });
+    }
+
+    // Post summary to most recent coach conversation
+    if (review?.summary) {
+      const convs = await base44.agents.listConversations({ agent_name: "iron_coach" });
+      if (convs?.[0]) {
+        const conv = await base44.agents.getConversation(convs[0].id);
+        await base44.agents.addMessage(conv, {
+          role: "assistant",
+          content: `**Weekly Review — ${moment().format("MMM D")}**\n\n${review.summary}${review.adjustments?.length ? `\n\nI've adjusted ${review.adjustments.length} session(s) for this week based on your recent training data.` : ""}`,
+        });
+      }
+    }
+
+    // Mark review done
+    await base44.entities.AthleteProfile.update(profile.id, { last_weekly_review_date: today });
+  }
+
   async function load() {
     setLoading(true);
     const [workouts, metrics, acts, races, profiles, allMetrics] = await Promise.all([
@@ -75,6 +157,11 @@ export default function Dashboard() {
     const weekActs = (acts || []).filter((a) => a.date >= weekStart && a.date <= weekEnd);
     setWeekStats({ hours: weekActs.reduce((s, a) => s + (a.duration_minutes || 0), 0) / 60, count: weekActs.length });
 
+    // Monday weekly review
+    if (new Date().getDay() === 1) {
+      weeklyReview(p).catch(() => {}); // non-blocking
+    }
+
     // HRV auto-downgrade check
     const todayM = metrics?.[0];
     const todayW = workouts?.[0];
@@ -86,7 +173,7 @@ export default function Dashboard() {
       } else {
         const sleepStreak = checkPoorSleepStreak(allMetrics || []);
         if (sleepStreak >= 3) {
-          await downgradeWorkout(todayW, `${sleepStreak} consecutive nights of poor/fair sleep detected. Reducing today’s load to support recovery.`, "poor_sleep", `Sleep streak: ${sleepStreak} nights`);
+          await downgradeWorkout(todayW, `${sleepStreak} consecutive nights of poor/fair sleep detected. Reducing today's load to support recovery.`, "poor_sleep", `Sleep streak: ${sleepStreak} nights`);
         }
       }
     }
