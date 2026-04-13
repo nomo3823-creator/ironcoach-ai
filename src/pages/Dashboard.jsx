@@ -178,7 +178,16 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
 
     setTodayWorkout(workouts?.[0] || null);
     setTodayMetrics(metrics?.[0] || null);
-    setActivities(acts || []);
+    
+    // Deduplicate activities by date + external_id
+    const seen = new Set();
+    const deduped = (acts || []).filter(a => {
+      const key = `${a.date}-${a.external_id || a.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    setActivities(deduped);
     setProfile(p);
 
     const future = (races || []).filter((r) => moment(r.date).isAfter(moment()));
