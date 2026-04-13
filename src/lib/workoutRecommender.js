@@ -1,5 +1,5 @@
 /**
- * Workout Recommender — generates adjusted workout targets based on readiness
+ * Workout Recommender — generates adjusted workout targets based on readiness and Apple Health signals
  */
 import { getAdjustmentFactor } from "./readinessEngine.js";
 
@@ -24,18 +24,48 @@ function secsToMinKm(s) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export function generateRecommendation({ workout, readiness, activities, profile, phase }) {
-  const factor = getAdjustmentFactor(readiness.score ?? 70);
+export function generateRecommendation({ workout, readiness, activities, profile, metrics = [], phase }) {
+  let factor = getAdjustmentFactor(readiness.score ?? 70);
 
   const plannedDuration = workout.duration_minutes || 60;
   const plannedDistance = workout.distance_km || null;
   const plannedIntensity = workout.intensity || "moderate";
   const sport = workout.sport;
 
+  // Apple Watch signals: apply additional fatigue reduction
+  const today = metrics?.length > 0 ? metrics.sort((a, b) => b.date > a.date ? 1 : -1)[0] : null;
+  
+  // If overnight HRV is >15% below baseline, apply 15% additional reduction
+  if (readiness.breakdown?.apple_watch_hrv_alert) {
+    factor *= 0.85;
+  }
+
+  // If sleep was poor, cap intensity at "moderate" regardless of readiness
+  let forceLowIntensity = false;
+  if (readiness.breakdown?.poor_sleep_alert) {
+    forceLowIntensity = true;
+    factor *= 0.8;
+  }
+
+  // If SpO2 was below 94% overnight, flag as potential illness
+  if (today?.spo2 && today.spo2 < 94) {
+    forceLowIntensity = true;
+    factor *= 0.7;
+  }
+
+  // If resting HR is 5+ bpm above baseline, apply additional reduction
+  if (readiness.breakdown?.rhr_today && readiness.breakdown?.rhr_baseline) {
+    const hrDiff = readiness.breakdown.rhr_today - readiness.breakdown.rhr_baseline;
+    if (hrDiff >= 5) {
+      factor *= (1 - (hrDiff * 0.02)); // 2% reduction per bpm above baseline
+    }
+  }
+
   // Phase overrides
   let adjustedFactor = factor;
   if (phase === "taper") adjustedFactor = Math.max(0.85, Math.min(0.9, factor));
   if (phase === "peak" && (readiness.score ?? 70) > 70) adjustedFactor = Math.min(1.05, factor * 1.05);
+  if (forceLowIntensity) adjustedFactor = Math.min(adjustedFactor, 0.75);
 
   // Sport-specific fatigue: same sport yesterday at TSS > 70
   const yesterday = new Date();
@@ -51,10 +81,25 @@ export function generateRecommendation({ workout, readiness, activities, profile
   // Intensity adjustment
   const baseIntensityIdx = INTENSITY_ZONE_MAP[plannedIntensity] ?? 1;
   let recIntensityIdx = baseIntensityIdx;
-  if (readiness.score < 55) recIntensityIdx = Math.max(0, baseIntensityIdx - 1);
-  if (readiness.score < 40) recIntensityIdx = 0;
+  if (forceLowIntensity) {
+    recIntensityIdx = 0; // Force easy if poor sleep/low SpO2
+  } else if (readiness.score < 55) {
+    recIntensityIdx = Math.max(0, baseIntensityIdx - 1);
+  } else if (readiness.score < 40) {
+    recIntensityIdx = 0;
+  }
   const recIntensity = INTENSITY_LEVELS[recIntensityIdx];
   const recHRZone = HR_ZONES[recIntensityIdx];
+
+  // Track adjustment reason for coach notes
+  let adjustmentReason = null;
+  if (readiness.breakdown?.apple_watch_hrv_alert) {
+    adjustmentReason = 'HRV drop detected — extra recovery recommended';
+  } else if (readiness.breakdown?.poor_sleep_alert) {
+    adjustmentReason = 'Poor sleep quality detected — intensity capped at easy';
+  } else if (today?.spo2 && today.spo2 < 94) {
+    adjustmentReason = 'Low SpO2 detected — easy effort only';
+  }
 
   // Power (cycling)
   let recPower = null;
@@ -104,5 +149,6 @@ export function generateRecommendation({ workout, readiness, activities, profile
     planned_intensity: plannedIntensity,
     readiness_score: readiness.score,
     readiness_label: readiness.label,
+    adjustment_reason: adjustmentReason,
   };
 }

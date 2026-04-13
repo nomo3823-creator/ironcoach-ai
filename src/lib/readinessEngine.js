@@ -1,6 +1,6 @@
 /**
  * Readiness Engine — calculates a composite 0-100 readiness score
- * from DailyMetrics and recent Activities.
+ * from DailyMetrics and recent Activities, with Apple Health integration.
  */
 
 export const READINESS_BANDS = [
@@ -22,12 +22,12 @@ export function calculateReadiness(metrics = [], activities = []) {
 
   const breakdown = {
     hrv: 0, sleep_hours: 0, sleep_quality: 0, body_battery: 0, resting_hr: 0,
-    tsb: 0, rest_days: 0, yesterday_tss: 0,
+    tsb: 0, rest_days: 0, yesterday_tss: 0, spo2_penalty: 0,
   };
 
   // ── RECOVERY SIGNALS (50pts) ──────────────────────────────────────────────
 
-  // HRV (15 pts)
+  // HRV (15 pts) — prioritize Apple Health HRV
   const last14 = sorted.slice(0, 14).filter(m => m.hrv > 0);
   if (today?.hrv && last14.length >= 3) {
     const baseline = last14.slice(1).reduce((s, m) => s + m.hrv, 0) / (last14.length - 1);
@@ -36,6 +36,11 @@ export function calculateReadiness(metrics = [], activities = []) {
     breakdown.hrv_baseline = Math.round(baseline);
     breakdown.hrv_today = today.hrv;
     breakdown.hrv_ratio = Math.round((ratio - 1) * 100);
+    
+    // Apple Watch signal: if HRV is >15% below baseline, flag as high fatigue
+    if (ratio < 0.85) {
+      breakdown.apple_watch_hrv_alert = true;
+    }
   } else if (today?.hrv) {
     breakdown.hrv = 10; // default mid score if no baseline
   }
@@ -46,9 +51,14 @@ export function calculateReadiness(metrics = [], activities = []) {
     breakdown.sleep_hours = h >= 8 ? 10 : h >= 7 ? 8 : h >= 6 ? 5 : 0;
   }
 
-  // Sleep quality (10 pts)
+  // Sleep quality (10 pts) — Apple Health sleep analysis
   const sqMap = { excellent: 10, good: 8, fair: 4, poor: 0 };
   breakdown.sleep_quality = sqMap[today?.sleep_quality] ?? 0;
+
+  // If sleep was poor, additional fatigue signal
+  if (today?.sleep_quality === 'poor' || (today?.sleep_hours && today.sleep_hours < 6)) {
+    breakdown.poor_sleep_alert = true;
+  }
 
   // Body battery (10 pts)
   if (today?.body_battery) {
@@ -56,7 +66,7 @@ export function calculateReadiness(metrics = [], activities = []) {
     breakdown.body_battery = bb >= 80 ? 10 : bb >= 60 ? 8 : bb >= 40 ? 5 : 0;
   }
 
-  // Resting HR (5 pts)
+  // Resting HR (5 pts) — Apple Health resting HR
   const restHRs = sorted.slice(0, 14).filter(m => m.resting_hr > 0);
   if (today?.resting_hr && restHRs.length >= 3) {
     const baseline = restHRs.slice(1).reduce((s, m) => s + m.resting_hr, 0) / (restHRs.length - 1);
@@ -64,6 +74,12 @@ export function calculateReadiness(metrics = [], activities = []) {
     breakdown.resting_hr = diff <= 0 ? 5 : diff <= 5 ? 3 : 0;
     breakdown.rhr_baseline = Math.round(baseline);
     breakdown.rhr_today = today.resting_hr;
+  }
+
+  // SpO2 signal (additional recovery metric from Apple Health)
+  if (today?.spo2 && today.spo2 < 95) {
+    breakdown.low_spo2_alert = true;
+    breakdown.spo2_penalty = today.spo2 < 93 ? 10 : 5; // Deduct points if SpO2 is low
   }
 
   // ── TRAINING LOAD SIGNALS (50pts) ─────────────────────────────────────────
@@ -101,7 +117,8 @@ export function calculateReadiness(metrics = [], activities = []) {
   const score = Math.round(
     breakdown.hrv + breakdown.sleep_hours + breakdown.sleep_quality +
     breakdown.body_battery + breakdown.resting_hr +
-    breakdown.tsb + breakdown.rest_days + breakdown.yesterday_tss
+    breakdown.tsb + breakdown.rest_days + breakdown.yesterday_tss -
+    breakdown.spo2_penalty
   );
 
   const capped = Math.min(100, Math.max(0, score));

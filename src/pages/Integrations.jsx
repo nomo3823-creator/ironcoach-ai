@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, RefreshCw, Link2, Link2Off, AlertCircle, Loader2, Upload } from "lucide-react";
-import AppleHealthImport from "@/components/integrations/AppleHealthImport";
+import AppleHealthSettings from "@/components/integrations/AppleHealthSettings";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function Integrations() {
@@ -158,19 +158,7 @@ export default function Integrations() {
       </div>
 
       {/* Apple Health */}
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-destructive/10 flex items-center justify-center text-2xl">❤️</div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-foreground">Apple Health</h2>
-              <Badge variant="secondary" className="text-xs">XML Import</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Import HRV, sleep, resting HR, SpO2 & weight from your iPhone</p>
-          </div>
-        </div>
-        <AppleHealthImport />
-      </div>
+      <AppleHealthSettings />
     </div>
   );
 }
