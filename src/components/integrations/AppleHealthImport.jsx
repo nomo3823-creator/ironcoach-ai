@@ -82,11 +82,11 @@ export default function AppleHealthImport({ onImported }) {
       // Upsert into DailyMetrics
       let saved = 0;
       for (const day of parsed) {
-        const existing = await base44.entities.DailyMetrics.filter({ date: day.date, created_by: currentUser.email });
+        const existing = await base44.entities.DailyMetrics.filter({ date: day.date });
         if (existing.length > 0) {
           await base44.entities.DailyMetrics.update(existing[0].id, day);
         } else {
-          await base44.entities.DailyMetrics.create({ ...day, created_by: currentUser.email });
+          await base44.entities.DailyMetrics.create(day);
         }
         saved++;
       }
