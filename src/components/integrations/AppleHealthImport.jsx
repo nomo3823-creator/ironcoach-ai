@@ -1,11 +1,9 @@
 import { useState, useRef } from "react";
-import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, CheckCircle2, AlertCircle, FileDown, Plus } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import JSZip from "jszip";
-import { parseAppleHealthXML } from "@/lib/appleHealthParser";
 
 const INSTRUCTIONS = [
   "Open the Health app on your iPhone",
@@ -44,41 +42,7 @@ const IMPORT_MODES = [
   },
 ];
 
-async function extractXMLFromZip(zipFile) {
-  try {
-    const zip = new JSZip();
-    const contents = await zip.loadAsync(zipFile);
-    const xmlFile = contents.file('export.xml');
-    if (!xmlFile) {
-      throw new Error('export.xml not found in zip file. Make sure you exported from Health app.');
-    }
-    const blob = await xmlFile.async('blob');
-    return blob;
-  } catch (err) {
-    throw new Error('Failed to extract zip: ' + err.message);
-  }
-}
 
-async function saveMetricsBatch(metrics, currentUser) {
-  let saved = 0;
-  const errors = [];
-
-  for (const day of metrics) {
-    try {
-      const existing = await base44.entities.DailyMetrics.filter({ date: day.date, created_by: currentUser.email });
-      if (existing.length > 0) {
-        await base44.entities.DailyMetrics.update(existing[0].id, day);
-      } else {
-        await base44.entities.DailyMetrics.create(day);
-      }
-      saved++;
-    } catch (err) {
-      errors.push(`${day.date}: ${err.message}`);
-    }
-  }
-
-  return { saved, errors };
-}
 
 function ImportStep1({ onStart }) {
   return (
@@ -290,100 +254,76 @@ function ImportStep4({ result, onReset }) {
 
 export default function AppleHealthImport({ onImported }) {
   const { currentUser } = useAuth();
-  const { toast } = useToast();
+  const importCtx = useImport();
+  const fileRef = useRef();
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState('');
-  const [counters, setCounters] = useState(null);
-  const [result, setResult] = useState(null);
   const [selectedMode, setSelectedMode] = useState('smart');
 
-  async function handleFile(file) {
-    setLoading(true);
-    setProgress(0);
-    setCounters(null);
+  const handleFile = async (file) => {
+    if (!file) return;
     setStep(3);
+    importCtx.startImport(file, selectedMode);
+    onImported?.();
+  };
 
-    try {
-      let xmlFile = file;
-      setMessage('Preparing file...');
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
 
-      // Handle zip files
-      if (file.name.endsWith('.zip')) {
-        setMessage('Extracting export.xml from zip...');
-        xmlFile = await extractXMLFromZip(file);
-      }
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
 
-      const sizeMB = (xmlFile.size / 1024 / 1024).toFixed(1);
-      if (sizeMB > 2048) {
-        throw new Error('File exceeds 2GB. Please export the last 2 years only.');
-      }
+  // If import is active (not idle or done), disable file input and show progress
+  const isImporting = importCtx && ['parsing', 'saving'].includes(importCtx.status);
+  const isFinished = importCtx && importCtx.status === 'done';
 
-      if (sizeMB > 100) {
-        setMessage(`Large file detected (${sizeMB}MB) — this may take several minutes. Keep this tab open.`);
-      }
-
-      // Parse file with selected import mode
-      const parseResult = await parseAppleHealthXML(xmlFile, ({ percent, message: msg, counters: cnt }) => {
-        setProgress(percent);
-        setMessage(msg);
-        setCounters(cnt);
-      }, selectedMode);
-
-      setMessage('Saving to database...');
-      const { saved, errors } = await saveMetricsBatch(parseResult.metrics, currentUser);
-
-      // Calculate date range
-      const dates = parseResult.metrics.map(m => m.date).sort();
-      const dateRange = dates.length > 0 
-        ? `${dates[0]} to ${dates[dates.length - 1]} (${dates.length} days)`
-        : 'No data';
-
-      setResult({ saved, errors, counters: parseResult.counters, dateRange });
-      setStep(4);
-
-      if (errors.length === 0) {
-        toast({
-          title: `✓ Imported ${saved} days of Apple Health data`,
-          description: `Your readiness and recovery metrics are now populated.`,
-        });
-      } else {
-        toast({
-          title: `Imported ${saved} days, ${errors.length} failed`,
-          description: 'Most data was saved successfully.',
-          variant: 'default',
-        });
-      }
-
-      onImported?.();
-    } catch (err) {
-      console.error('Import error:', err);
-      toast({
-        title: 'Import failed',
-        description: err?.message || 'Unknown error',
-        variant: 'destructive',
-      });
-      setStep(2);
-    } finally {
-      setLoading(false);
-    }
+  // Map import context state to local component view
+  let displayStep = step;
+  if (isImporting) {
+    displayStep = 3;
+  } else if (isFinished) {
+    displayStep = 4;
   }
 
   function reset() {
     setStep(1);
-    setProgress(0);
-    setMessage('');
-    setCounters(null);
-    setResult(null);
+    setSelectedMode('smart');
+    importCtx.cancelImport();
   }
 
   return (
     <div className="space-y-4">
-      {step === 1 && <ImportStep1 onStart={() => setStep(2)} />}
-      {step === 2 && <ImportStep2 onFile={handleFile} loading={loading} selectedMode={selectedMode} onModeChange={setSelectedMode} />}
-      {step === 3 && <ImportStep3 progress={progress} counters={counters} message={message} />}
-      {step === 4 && <ImportStep4 result={result} onReset={reset} />}
+      {displayStep === 1 && <ImportStep1 onStart={() => setStep(2)} />}
+      {displayStep === 2 && (
+        <ImportStep2
+          onFile={handleFile}
+          loading={isImporting}
+          selectedMode={selectedMode}
+          onModeChange={setSelectedMode}
+        />
+      )}
+      {displayStep === 3 && (
+        <ImportStep3
+          progress={importCtx?.percent || 0}
+          counters={importCtx?.counters || {}}
+          message={importCtx?.message || ''}
+        />
+      )}
+      {displayStep === 4 && (
+        <ImportStep4
+          result={{
+            saved: importCtx?.saved || 0,
+            errors: importCtx?.errors || [],
+            counters: importCtx?.counters || {},
+            dateRange: `Imported ${importCtx?.totalDays || 0} days`,
+          }}
+          onReset={reset}
+        />
+      )}
     </div>
   );
 }

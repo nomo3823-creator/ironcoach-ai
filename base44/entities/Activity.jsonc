@@ -188,6 +188,7 @@
         "strava",
         "garmin",
         "apple_watch",
+        "apple_health",
         "manual"
       ]
     },
@@ -206,6 +207,11 @@
     "notes": {
       "type": "string",
       "title": "Notes"
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Imported At"
     }
   },
   "required": [

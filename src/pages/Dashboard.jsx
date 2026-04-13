@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ const SkeletonSection = () => (
 export default function Dashboard() {
   const { currentUser, isLoadingAuth } = useAuth();
   const navigate = useNavigate();
+  const importCtx = useImport();
   const [profile, setProfile] = useState(null);
   const [todayMetrics, setTodayMetrics] = useState(null);
   const [activities, setActivities] = useState([]);
@@ -48,7 +50,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!currentUser || isLoadingAuth) return;
     loadDashboardData();
-  }, [currentUser, isLoadingAuth]);
+  }, [currentUser, isLoadingAuth, importCtx?.lastImportedAt]);
 
   async function loadDashboardData() {
     try {

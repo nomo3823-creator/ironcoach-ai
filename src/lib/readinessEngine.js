@@ -22,8 +22,13 @@ export function calculateReadiness(metrics = [], activities = []) {
 
   const breakdown = {
     hrv: 0, sleep_hours: 0, sleep_quality: 0, body_battery: 0, resting_hr: 0,
-    tsb: 0, rest_days: 0, yesterday_tss: 0, spo2_penalty: 0,
+    tsb: 0, rest_days: 0, yesterday_tss: 0, spo2_penalty: 0, vo2_max: 0,
   };
+
+  // VO2 Max (display-only signal from Apple Health)
+  if (today?.vo2_max) {
+    breakdown.vo2_max = today.vo2_max;
+  }
 
   // ── RECOVERY SIGNALS (50pts) ──────────────────────────────────────────────
 

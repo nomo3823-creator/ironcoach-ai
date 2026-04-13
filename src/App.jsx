@@ -1,6 +1,8 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
+import { ImportProvider } from '@/lib/ImportContext'
+import ImportProgressPill from '@/components/integrations/ImportProgressPill'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -23,7 +25,7 @@ import Onboarding from './pages/Onboarding';
 import StravaCallback from './pages/StravaCallback';
 
 const AuthenticatedApp = () => {
-  const { isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { currentUser, isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -87,9 +89,12 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
+        <ImportProvider>
+          <Router>
+            <AuthenticatedApp />
+          </Router>
+          <ImportProgressPill />
+        </ImportProvider>
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
