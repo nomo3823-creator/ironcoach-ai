@@ -370,6 +370,12 @@ export async function parseAppleHealthXML(file, onProgress, importMode = 'smart'
     if (m.vo2_max) final.vo2_max = Math.round(m.vo2_max * 10) / 10;
     if (m.weight_kg) final.weight_kg = Math.round(m.weight_kg * 10) / 10;
 
+    // Skip skeleton rows — if nothing other than `date` was populated, there's
+    // no point writing a row. Saves thousands of empty DailyMetrics records
+    // on multi-year imports and keeps queries fast.
+    const hasAnyValue = Object.keys(final).some(k => k !== 'date' && final[k] !== undefined && final[k] !== null);
+    if (!hasAnyValue) continue;
+
     finalMetrics[date] = final;
   }
 

@@ -67,31 +67,40 @@ export default function ReadinessGauge({ readiness }) {
         <p className="text-xs text-muted-foreground mt-1">{readiness.description}</p>
       </div>
 
-      {/* Signal bars */}
-      <div className="space-y-1.5 pt-2 border-t border-border">
-        {readiness.breakdown?.hrv_baseline && readiness.breakdown?.hrv_today && readiness.breakdown.hrv_today > 0 && (
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-muted-foreground">HRV {readiness.breakdown.hrv_today}ms</span>
-            <span className={readiness.breakdown.hrv_ratio && readiness.breakdown.hrv_ratio > 0 ? "text-recovery" : "text-destructive"}>
-              {readiness.breakdown.hrv_ratio && readiness.breakdown.hrv_ratio > 0 ? "↑" : "↓"} {Math.abs(readiness.breakdown.hrv_ratio || 0)}%
-            </span>
+      {/* Signal bars — render only when we have real values to show */}
+      {(() => {
+        const b = readiness.breakdown || {};
+        const hasHrv = b.hrv_baseline && b.hrv_today > 0;
+        const hasSleep = b.sleep_hours_value > 0;
+        const hasTsb = typeof b.tsb_value === 'number' && b.tsb_value !== 0;
+        if (!hasHrv && !hasSleep && !hasTsb) return null;
+        return (
+          <div className="space-y-1.5 pt-2 border-t border-border">
+            {hasHrv && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">HRV {b.hrv_today}ms</span>
+                <span className={b.hrv_ratio > 0 ? "text-recovery" : "text-destructive"}>
+                  {b.hrv_ratio > 0 ? "↑" : "↓"} {Math.abs(b.hrv_ratio || 0)}%
+                </span>
+              </div>
+            )}
+            {hasSleep && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">Sleep {b.sleep_hours_value}h</span>
+                <span className="text-foreground">{b.sleep_quality_value || b.sleep_quality}</span>
+              </div>
+            )}
+            {hasTsb && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">Form (TSB)</span>
+                <span className={b.tsb_value > 0 ? "text-recovery" : "text-foreground"}>
+                  {b.tsb_value > 0 ? "+" : ""}{b.tsb_value}
+                </span>
+              </div>
+            )}
           </div>
-        )}
-        {readiness.breakdown?.sleep_hours_value && (
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-muted-foreground">Sleep {readiness.breakdown.sleep_hours_value}h</span>
-            <span className="text-foreground">{readiness.breakdown.sleep_quality_value || readiness.breakdown.sleep_quality}</span>
-          </div>
-        )}
-        {readiness.breakdown?.tsb_value !== undefined && (
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-muted-foreground">Form (TSB)</span>
-            <span className={readiness.breakdown.tsb_value > 0 ? "text-recovery" : "text-foreground"}>
-              {readiness.breakdown.tsb_value > 0 ? "+" : ""}{readiness.breakdown.tsb_value}
-            </span>
-          </div>
-        )}
-      </div>
+        );
+      })()}
     </div>
   );
 }
