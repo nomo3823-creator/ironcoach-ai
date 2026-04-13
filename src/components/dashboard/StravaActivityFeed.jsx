@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { formatDistance } from "@/lib/unitConversions";
 import moment from "moment";
 
 export default function StravaActivityFeed({ activities }) {
@@ -43,7 +44,7 @@ export default function StravaActivityFeed({ activities }) {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {a.distance_km ? `${a.distance_km.toFixed(1)}km` : ""} {a.distance_km && a.duration_minutes ? "·" : ""} {a.duration_minutes}min {a.avg_hr > 0 ? `· ${a.avg_hr}bpm` : ""}
+              {a.distance_km ? formatDistance(a.distance_km) : ""} {a.distance_km && a.duration_minutes ? "·" : ""} {a.duration_minutes}min {a.avg_hr > 0 ? `· ${a.avg_hr}bpm` : ""}
             </p>
             {a.aerobic_decoupling > 5 && <p className="text-xs text-destructive mt-1">⚠ High aerobic decoupling</p>}
           </div>

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { sportColors } from "@/lib/sportUtils";
+import { formatDistance } from "@/lib/unitConversions";
 import moment from "moment";
 
 export default function TodaySessionCard({ workout, readiness, activities }) {
@@ -37,6 +38,13 @@ export default function TodaySessionCard({ workout, readiness, activities }) {
           </div>
         </div>
 
+        {completedToday.distance_km && (
+          <div className="text-sm">
+            <p className="text-muted-foreground text-xs">Distance</p>
+            <p className="font-semibold text-foreground">{formatDistance(completedToday.distance_km)}</p>
+          </div>
+        )}
+
         <Button className="w-full">View full analysis</Button>
       </div>
     );
@@ -57,7 +65,7 @@ export default function TodaySessionCard({ workout, readiness, activities }) {
             <p className="text-muted-foreground text-xs">Yesterday</p>
             <p className="font-semibold text-foreground">{yesterday.title}</p>
             <p className="text-xs text-muted-foreground">
-              {yesterday.distance_km ? `${yesterday.distance_km.toFixed(1)}km · ` : ""}{yesterday.duration_minutes}min · {yesterday.tss || 0} TSS
+              {yesterday.distance_km ? `${formatDistance(yesterday.distance_km)} · ` : ""}{yesterday.duration_minutes}min · {yesterday.tss || 0} TSS
             </p>
           </div>
         )}
