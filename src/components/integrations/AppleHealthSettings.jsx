@@ -21,19 +21,24 @@ export default function AppleHealthSettings() {
     setDiagLoading(true);
     setDiag(null);
     try {
-      // Query DailyMetrics three ways to triangulate the problem:
-      //   1. Scoped by current user email (what every consumer page does)
-      //   2. Without any filter (gives us the total count; if rows exist here
-      //      but not in #1, created_by is the problem)
-      //   3. Filtered by today's local date + user (what Dashboard/Recovery
-      //      use for the "today" tiles)
       const today = new Date().toLocaleDateString("en-CA");
+      // NOTE: Base44 filter(...)'s third arg is a LIMIT — omit it to get the true
+      // row count. Use a large limit (10000) so we see actual totals.
       const [scoped, unscoped, todayOnly, activities] = await Promise.all([
-        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 5),
-        base44.entities.DailyMetrics.list("-date", 5),
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 10000),
+        base44.entities.DailyMetrics.list("-date", 10000),
         base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
-        base44.entities.Activity.filter({ created_by: currentUser.email, source: "apple_health" }, "-date", 5),
+        base44.entities.Activity.filter({ created_by: currentUser.email, source: "apple_health" }, "-date", 10000),
       ]);
+
+      // Analyse payload quality — how many rows have real HRV / sleep / RHR values?
+      const rowsWithHrv = (scoped || []).filter(r => r.hrv > 0).length;
+      const rowsWithSleep = (scoped || []).filter(r => r.sleep_hours > 0).length;
+      const rowsWithRhr = (scoped || []).filter(r => r.resting_hr > 0).length;
+      const rowsWithAnyValue = (scoped || []).filter(r =>
+        r.hrv > 0 || r.sleep_hours > 0 || r.resting_hr > 0 || r.spo2 > 0 || r.active_calories > 0
+      ).length;
+
       setDiag({
         currentUserEmail: currentUser.email,
         today,
@@ -41,18 +46,20 @@ export default function AppleHealthSettings() {
         unscopedCount: unscoped?.length ?? 0,
         todayMatches: todayOnly?.length ?? 0,
         appleHealthWorkouts: activities?.length ?? 0,
+        rowsWithHrv,
+        rowsWithSleep,
+        rowsWithRhr,
+        rowsWithAnyValue,
+        todayRow: todayOnly?.[0] || null,
         scopedSample: (scoped || []).slice(0, 3).map(r => ({
           date: r.date,
           hrv: r.hrv,
           sleep_hours: r.sleep_hours,
           resting_hr: r.resting_hr,
+          spo2: r.spo2,
+          active_calories: r.active_calories,
           created_by: r.created_by,
           import_source: r.import_source,
-        })),
-        unscopedSample: (unscoped || []).slice(0, 3).map(r => ({
-          date: r.date,
-          hrv: r.hrv,
-          created_by: r.created_by,
         })),
       });
     } catch (err) {
@@ -191,7 +198,18 @@ export default function AppleHealthSettings() {
                   <p><span className="text-muted-foreground">rows total (any owner):</span> <strong className="text-foreground">{diag.unscopedCount}</strong></p>
                   <p><span className="text-muted-foreground">rows dated today:</span> <strong className="text-foreground">{diag.todayMatches}</strong></p>
                   <p><span className="text-muted-foreground">apple health workouts:</span> <strong className="text-foreground">{diag.appleHealthWorkouts}</strong></p>
+                  <p className="pt-2 border-t border-border/50 mt-2"><span className="text-muted-foreground">rows with HRV:</span> <strong className="text-foreground">{diag.rowsWithHrv}</strong></p>
+                  <p><span className="text-muted-foreground">rows with sleep:</span> <strong className="text-foreground">{diag.rowsWithSleep}</strong></p>
+                  <p><span className="text-muted-foreground">rows with resting HR:</span> <strong className="text-foreground">{diag.rowsWithRhr}</strong></p>
+                  <p><span className="text-muted-foreground">rows with any metric value:</span> <strong className="text-foreground">{diag.rowsWithAnyValue}</strong></p>
                 </div>
+
+                {diag.todayRow && (
+                  <div className="rounded-lg bg-secondary/40 p-3 space-y-1">
+                    <p className="font-semibold text-foreground">Today's row (raw):</p>
+                    <pre className="text-[10px] overflow-x-auto">{JSON.stringify(diag.todayRow, null, 2)}</pre>
+                  </div>
+                )}
 
                 {diag.scopedCount > 0 && (
                   <div className="rounded-lg bg-secondary/40 p-3 space-y-1">
