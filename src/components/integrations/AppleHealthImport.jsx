@@ -78,6 +78,7 @@ export default function AppleHealthImport({ onImported }) {
     setLoading(true);
     setResult(null);
 
+    (async () => {
     try {
       const text = await file.text();
       console.log('XML parsed, length:', text.length);
@@ -118,6 +119,12 @@ export default function AppleHealthImport({ onImported }) {
     setLoading(false);
     // reset input
     if (fileRef.current) fileRef.current.value = "";
+    })().catch(err => {
+      console.error('Unhandled error in handleFile:', err);
+      toast({ title: "Import failed", description: err?.message || "Unknown error", variant: "destructive" });
+      setLoading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    });
   }
 
   return (
