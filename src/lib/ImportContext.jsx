@@ -118,24 +118,27 @@ export function ImportProvider({ children }) {
       setMessage(`Saving ${metricsToSave.length} days of metrics...`);
       setPercent(56);
 
-      // Step 4 — save metrics with created_by, using upsert logic
+      // Step 4 — save metrics with created_by, using upsert logic with rate limit handling
       let savedCount = 0;
       const importErrors = [];
-      const BATCH = 10;
+      const BATCH = 5;
 
       for (let i = 0; i < metricsToSave.length; i += BATCH) {
         const batch = metricsToSave.slice(i, i + BATCH);
 
-        await Promise.all(batch.map(async (metric) => {
+        // Process sequentially to avoid rate limits
+        for (const metric of batch) {
+          let existing = null;
+          let record = null;
           try {
             // Check for existing record for this date + user
-            const existing = await base44.entities.DailyMetrics.filter({
+            existing = await base44.entities.DailyMetrics.filter({
               date: metric.date,
               created_by: currentUser.email,
             });
 
             // Build the record — always include created_by
-            const record = {
+            record = {
               date: metric.date,
               created_by: currentUser.email,
             };
@@ -165,9 +168,30 @@ export function ImportProvider({ children }) {
             }
             savedCount++;
           } catch (err) {
-            importErrors.push(`${metric.date}: ${err.message}`);
+            if (err.message?.includes('Rate limit')) {
+              // Wait and retry once
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              try {
+                // Retry the same operation
+                if (existing && existing.length > 0) {
+                  await base44.entities.DailyMetrics.update(existing[0].id, record);
+                } else {
+                  await base44.entities.DailyMetrics.create(record);
+                }
+                savedCount++;
+              } catch (retryErr) {
+                importErrors.push(`${metric.date}: ${retryErr.message}`);
+              }
+            } else {
+              importErrors.push(`${metric.date}: ${err.message}`);
+            }
           }
-        }));
+        }
+
+        // Small delay between batches to respect rate limits
+        if (i + BATCH < metricsToSave.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
 
         const pct = 56 + Math.round(((i + BATCH) / metricsToSave.length) * 35);
         setPercent(Math.min(91, pct));
@@ -175,12 +199,13 @@ export function ImportProvider({ children }) {
         setSaved(savedCount);
       }
 
-      // Step 5 — save Apple Watch workouts with created_by
+      // Step 5 — save Apple Watch workouts with created_by (with rate limit handling)
       if (parseResult.workouts?.length > 0) {
         setMessage(`Saving ${parseResult.workouts.length} workouts...`);
         setPercent(92);
 
-        for (const workout of parseResult.workouts) {
+        for (let i = 0; i < parseResult.workouts.length; i++) {
+          const workout = parseResult.workouts[i];
           try {
             const existing = await base44.entities.Activity.filter({
               external_id: workout.external_id,
@@ -193,7 +218,30 @@ export function ImportProvider({ children }) {
               });
             }
           } catch (err) {
+            if (err.message?.includes('Rate limit')) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              // Retry once
+              try {
+                const existing = await base44.entities.Activity.filter({
+                  external_id: workout.external_id,
+                  created_by: currentUser.email,
+                });
+                if (!existing || existing.length === 0) {
+                  await base44.entities.Activity.create({
+                    ...workout,
+                    created_by: currentUser.email,
+                  });
+                }
+              } catch (retryErr) {
+                // Skip on second failure
+              }
+            }
             // Skip duplicate workouts silently
+          }
+          
+          // Small delay every 10 workouts
+          if ((i + 1) % 10 === 0 && i < parseResult.workouts.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
       }
