@@ -78,7 +78,10 @@ export default function Dashboard() {
 
       const [profileData, activitiesData, raceData, recData, journalData, weekWorkoutsData, allMetricsData] = await Promise.all([
         base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1),
-        base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 20),
+        // 500 activities — matches Analytics so calculateFitnessMetrics has enough
+        // history for the 42-day EMA decay. 20 wasn't enough and Dashboard's TSB
+        // disagreed with Analytics.
+        base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 500),
         base44.entities.Race.filter({ created_by: currentUser.email }, "date", 10),
         base44.entities.PlanRecommendation.filter({ created_by: currentUser.email, status: "pending" }),
         base44.entities.JournalEntry.filter({ created_by: currentUser.email }, "-entry_date", 5),
