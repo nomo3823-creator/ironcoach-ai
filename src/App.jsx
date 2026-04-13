@@ -56,6 +56,7 @@ const AuthenticatedApp = () => {
   return (
   <Routes>
     <Route path="/onboarding" element={<Onboarding />} />
+    <Route path="/strava-callback" element={<StravaCallback />} />
     <Route element={<Layout />}>
       <Route path="/" element={<Dashboard />} />
       <Route path="/plan" element={<TrainingPlan />} />
@@ -65,7 +66,6 @@ const AuthenticatedApp = () => {
       <Route path="/coach" element={<CoachChat />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/integrations" element={<Integrations />} />
-      <Route path="/strava-callback" element={<StravaCallback />} />
       <Route path="/log" element={<LogMetrics />} />
       <Route path="*" element={<PageNotFound />} />
     </Route>
