@@ -90,7 +90,7 @@ export default function Analytics() {
           <SwimTab activities={activities} metrics={metrics} profile={profile} />
         </TabsContent>
         <TabsContent value="recovery" className="mt-5">
-          <RecoveryTab metrics={metrics} />
+          <RecoveryTab metrics={metrics} activities={activities} />
         </TabsContent>
         <TabsContent value="records" className="mt-5">
           <RecordsTab activities={activities} metrics={metrics} />

@@ -15,6 +15,7 @@ import StravaActivityFeed from "@/components/dashboard/StravaActivityFeed";
 import TrainingLoadChart from "@/components/dashboard/TrainingLoadChart";
 import RaceCard from "@/components/dashboard/RaceCard";
 import WeeklySnapshot from "@/components/dashboard/WeeklySnapshot";
+import ReadinessBreakdown from "@/components/ReadinessBreakdown";
 import { calculateReadiness } from "@/lib/readinessEngine";
 import { getActivityTSS } from "@/lib/planUtils";
 import moment from "moment";
@@ -40,6 +41,7 @@ export default function Dashboard() {
   const [allMetrics, setAllMetrics] = useState([]);
   const [readiness, setReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   const todayStr = () => new Date().toISOString().split("T")[0];
 
@@ -166,6 +168,15 @@ export default function Dashboard() {
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
           <ReadinessGauge readiness={readiness} />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            className="w-full"
+          >
+            {showBreakdown ? "Hide breakdown" : "View breakdown"}
+          </Button>
+          {showBreakdown && <ReadinessBreakdown readiness={readiness} />}
           <WeekAtAGlance activities={activities} />
           <div className="rounded-xl border border-border bg-card p-5 space-y-3">
             <div className="grid grid-cols-2 gap-3">

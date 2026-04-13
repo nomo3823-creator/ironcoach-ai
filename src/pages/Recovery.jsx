@@ -8,6 +8,8 @@ import { Loader2 } from "lucide-react";
 import moment from "moment";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { calculateReadiness } from "@/lib/readinessEngine";
+import ReadinessBreakdown from "@/components/ReadinessBreakdown";
 
 export default function Recovery() {
   const { currentUser } = useAuth();
@@ -18,6 +20,9 @@ export default function Recovery() {
   const [sleepQuality, setSleepQuality] = useState("");
   const [energy, setEnergy] = useState(0);
   const [legsFeel, setLegsFeel] = useState("");
+  const [allMetrics, setAllMetrics] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [readiness, setReadiness] = useState(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -27,13 +32,21 @@ export default function Recovery() {
   async function loadData() {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const tData = await base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email });
+      const [tData, metricsData, activitiesData] = await Promise.all([
+        base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 30),
+        base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 30),
+      ]);
       const m = tData?.[0];
       setTodayMetrics(m || null);
       setCompletedCheckin(m?.morning_checkin_complete || false);
       setSleepQuality(m?.sleep_quality || "");
       setEnergy(m?.energy_level || 0);
       setLegsFeel(m?.legs_feeling || "");
+      setAllMetrics(metricsData || []);
+      setActivities(activitiesData || []);
+      const readinessScore = calculateReadiness(metricsData || [], activitiesData || []);
+      setReadiness(readinessScore);
     } catch (err) {
       toast.error("Failed to load Recovery data");
     } finally {
@@ -155,6 +168,9 @@ export default function Recovery() {
           <p className="text-sm text-muted-foreground">Your morning check-in has been saved. Come back tomorrow to update it.</p>
         </Card>
       )}
+
+      {/* Readiness Breakdown */}
+      <ReadinessBreakdown readiness={readiness} />
 
       {/* Recovery Metrics */}
       <div className="space-y-3">
