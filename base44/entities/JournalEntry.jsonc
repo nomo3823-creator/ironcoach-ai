@@ -1,0 +1,59 @@
+{
+  "name": "JournalEntry",
+  "type": "object",
+  "properties": {
+    "entry_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Entry Date"
+    },
+    "entry_type": {
+      "type": "string",
+      "title": "Entry Type",
+      "enum": [
+        "workout",
+        "reflection",
+        "nutrition_log",
+        "milestone",
+        "coach_note"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "content": {
+      "type": "string",
+      "title": "Content"
+    },
+    "session_id": {
+      "type": "string",
+      "title": "Session ID"
+    },
+    "sport": {
+      "type": "string",
+      "title": "Sport"
+    },
+    "feeling_rating": {
+      "type": "number",
+      "title": "Feeling Rating (1-5)"
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "items": {
+        "type": "string"
+      }
+    },
+    "is_milestone": {
+      "type": "boolean",
+      "title": "Is Milestone",
+      "default": false
+    }
+  },
+  "required": [
+    "entry_date",
+    "entry_type",
+    "title"
+  ]
+}

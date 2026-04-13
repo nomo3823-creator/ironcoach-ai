@@ -1,21 +1,33 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Calendar, BarChart3, Trophy, Dumbbell, MessageCircle, Settings, Menu, X, Zap, ClipboardList, Plug } from "lucide-react";
-import { useState } from "react";
+import { LayoutDashboard, Calendar, BarChart3, Trophy, MessageCircle, Settings, Menu, X, Zap, Apple, Dumbbell, Heart, BookOpen } from "lucide-react";
+import { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+const DESKTOP_NAV = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/today", icon: Zap, label: "Today", badge: "recommendations" },
   { path: "/plan", icon: Calendar, label: "Training Plan" },
-  { path: "/log", icon: ClipboardList, label: "Log Metrics" },
   { path: "/analytics", icon: BarChart3, label: "Analytics" },
-  { path: "/race", icon: Trophy, label: "Race Planner" },
-  { path: "/library", icon: Dumbbell, label: "Workouts" },
   { path: "/coach", icon: MessageCircle, label: "Coach Chat" },
-  { path: "/integrations", icon: Plug, label: "Integrations" },
+  { path: "/race", icon: Trophy, label: "Race Hub" },
+  { path: "/nutrition", icon: Apple, label: "Nutrition" },
+  { path: "/strength", icon: Dumbbell, label: "Strength" },
+  { path: "/recovery", icon: Heart, label: "Recovery" },
+  { path: "/journal", icon: BookOpen, label: "Journal" },
   { path: "/settings", icon: Settings, label: "Settings" },
 ];
 
-function SidebarContent({ current, onNav }) {
+const MOBILE_NAV = [
+  { path: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/today", icon: Zap, label: "Today" },
+  { path: "/coach", icon: MessageCircle, label: "Coach" },
+  { path: "/analytics", icon: BarChart3, label: "Analytics" },
+  { path: "/settings", icon: Settings, label: "Settings" },
+];
+
+function SidebarContent({ current, onNav, recCount }) {
   return (
     <div className="flex flex-col h-full">
       <div className="p-5 pb-3 flex items-center gap-2.5">
@@ -29,15 +41,16 @@ function SidebarContent({ current, onNav }) {
       </div>
 
       <nav className="flex-1 px-3 mt-2 space-y-0.5">
-        {NAV.map(({ path, icon: Icon, label }) => {
+        {DESKTOP_NAV.map(({ path, icon: Icon, label, badge }) => {
           const active = path === "/" ? current === "/" : current.startsWith(path);
+          const showBadge = badge === "recommendations" && recCount > 0;
           return (
             <Link
               key={path}
               to={path}
               onClick={onNav}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative",
                 active
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -45,6 +58,7 @@ function SidebarContent({ current, onNav }) {
             >
               <Icon className="h-4 w-4 shrink-0" />
               {label}
+              {showBadge && <span className="ml-auto text-xs bg-destructive text-white px-2 py-0.5 rounded-full">{recCount}</span>}
             </Link>
           );
         })}
@@ -67,13 +81,34 @@ function SidebarContent({ current, onNav }) {
 
 export default function Layout() {
   const location = useLocation();
+  const { currentUser } = useAuth();
   const [open, setOpen] = useState(false);
+  const [recCount, setRecCount] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    loadRecCount();
+    const interval = setInterval(loadRecCount, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
+  async function loadRecCount() {
+    try {
+      const recs = await base44.entities.PlanRecommendation.filter({
+        created_by: currentUser.email,
+        status: "pending",
+      });
+      setRecCount(recs?.length || 0);
+    } catch (err) {
+      console.error("Failed to load recommendations count", err);
+    }
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-60 flex-col border-r border-border bg-sidebar shrink-0">
-        <SidebarContent current={location.pathname} />
+        <SidebarContent current={location.pathname} recCount={recCount} />
       </aside>
 
       {/* Mobile drawer */}
@@ -84,7 +119,7 @@ export default function Layout() {
             <button onClick={() => setOpen(false)} className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
-            <SidebarContent current={location.pathname} onNav={() => setOpen(false)} />
+            <SidebarContent current={location.pathname} onNav={() => setOpen(false)} recCount={recCount} />
           </aside>
         </div>
       )}
@@ -104,6 +139,25 @@ export default function Layout() {
         <div className="flex-1 overflow-y-auto">
           <Outlet />
         </div>
+        {/* Mobile bottom nav */}
+        <nav className="lg:hidden border-t border-border bg-card px-3 py-2 flex justify-around">
+          {MOBILE_NAV.map(({ path, icon: Icon, label }) => {
+            const active = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+            return (
+              <Link
+                key={path}
+                to={path}
+                className={cn(
+                  "flex flex-col items-center gap-1 px-2 py-1.5 text-xs font-medium transition-all flex-1",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </main>
     </div>
   );

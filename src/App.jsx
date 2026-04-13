@@ -9,11 +9,14 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import TrainingPlan from './pages/TrainingPlan';
 import Analytics from './pages/Analytics';
-import RacePlanner from './pages/RacePlanner';
-import WorkoutLibrary from './pages/WorkoutLibrary';
 import CoachChat from './pages/CoachChat';
 import Settings from './pages/Settings';
-import LogMetrics from './pages/LogMetrics';
+import Today from './pages/Today';
+import RaceHub from './pages/RaceHub';
+import Nutrition from './pages/Nutrition';
+import Strength from './pages/Strength';
+import Recovery from './pages/Recovery';
+import Journal from './pages/Journal';
 import Onboarding from './pages/Onboarding';
 import Integrations from './pages/Integrations';
 import StravaCallback from './pages/StravaCallback';
@@ -59,14 +62,16 @@ const AuthenticatedApp = () => {
     <Route path="/strava-callback" element={<StravaCallback />} />
     <Route element={<Layout />}>
       <Route path="/" element={<Dashboard />} />
+      <Route path="/today" element={<Today />} />
       <Route path="/plan" element={<TrainingPlan />} />
       <Route path="/analytics" element={<Analytics />} />
-      <Route path="/race" element={<RacePlanner />} />
-      <Route path="/library" element={<WorkoutLibrary />} />
       <Route path="/coach" element={<CoachChat />} />
+      <Route path="/race" element={<RaceHub />} />
+      <Route path="/nutrition" element={<Nutrition />} />
+      <Route path="/strength" element={<Strength />} />
+      <Route path="/recovery" element={<Recovery />} />
+      <Route path="/journal" element={<Journal />} />
       <Route path="/settings" element={<Settings />} />
-      <Route path="/integrations" element={<Integrations />} />
-      <Route path="/log" element={<LogMetrics />} />
       <Route path="*" element={<PageNotFound />} />
     </Route>
   </Routes>
