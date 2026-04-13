@@ -57,6 +57,14 @@ function ToolCall({ tc }) {
 
 export default function MessageBubble({ message }) {
   const isUser = message.role === "user";
+
+  // Strip hidden context preamble from user messages before display
+  let displayContent = message.content;
+  if (isUser && message.content?.includes("[ATHLETE CONTEXT")) {
+    const parts = message.content.split("\nAthlete: ");
+    displayContent = parts.length > 1 ? parts[parts.length - 1].trim() : message.content;
+  }
+
   return (
     <div className={cn("flex gap-2.5", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
@@ -70,7 +78,7 @@ export default function MessageBubble({ message }) {
             isUser ? "bg-primary text-primary-foreground" : "bg-card border border-border"
           )}>
             {isUser ? (
-              <p className="text-sm leading-relaxed">{message.content}</p>
+              <p className="text-sm leading-relaxed">{displayContent}</p>
             ) : (
               <ReactMarkdown
                 className="text-sm leading-relaxed prose prose-sm max-w-none [&_p]:text-foreground [&_p]:my-1 [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:ml-4 [&_ul]:list-disc [&_ol]:ml-4 [&_ol]:list-decimal [&_li]:my-0.5 [&_li]:text-foreground [&_code]:bg-secondary [&_code]:px-1 [&_code]:rounded [&_code]:text-xs"
