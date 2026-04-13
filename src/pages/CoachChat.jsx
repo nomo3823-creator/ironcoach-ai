@@ -140,11 +140,12 @@ export default function CoachChat() {
       conv = await newConv();
     }
 
-    // Load full athlete context and inject as system message before every user message
+    // Load full athlete context and prepend to user message
     const ctx = athleteCtx || await loadAthleteContext();
     const contextStr = buildContextString(ctx.profile, ctx.metrics, ctx.workout, ctx.races);
-    await base44.agents.addMessage(conv, { role: "system", content: contextStr });
-    await base44.agents.addMessage(conv, { role: "user", content: msg });
+    await base44.agents.addMessage(conv, { role: "user", content: `${contextStr}
+
+Athlete message: ${msg}` });
 
     setSending(false);
 
