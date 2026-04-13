@@ -18,7 +18,7 @@ import RaceCard from "@/components/dashboard/RaceCard";
 import WeeklySnapshot from "@/components/dashboard/WeeklySnapshot";
 import ReadinessBreakdown from "@/components/ReadinessBreakdown";
 import { calculateReadiness } from "@/lib/readinessEngine";
-import { getActivityTSS } from "@/lib/planUtils";
+import { getActivityTSS, calculateFitnessMetrics } from "@/lib/planUtils";
 import { getEffectiveTodayMetrics } from "@/lib/metricsUtils";
 import moment from "moment";
 
@@ -122,6 +122,11 @@ export default function Dashboard() {
   const daysToRace = nextRace ? Math.max(0, Math.ceil((new Date(nextRace.date) - new Date()) / (1000 * 60 * 60 * 24))) : null;
   const todayPendingRec = pendingRecs.find(r => r.workout_date === todayStr());
 
+  // Compute live fitness metrics from imported activities — the stored
+  // ctl/atl/tsb fields on DailyMetrics are almost always null, so we can't
+  // rely on todayMetrics for them.
+  const fitness = calculateFitnessMetrics(activities || []);
+
   const stats = {
     weeklyHours: weekActs.reduce((s, a) => s + (a.duration_minutes || 0), 0) / 60,
     plannedHours: weekWorkouts.reduce((s, w) => s + (w.duration_minutes || 0), 0) / 60,
@@ -130,9 +135,9 @@ export default function Dashboard() {
     activitiesThisWeek: weekActs.length,
     weeklyTSS: weekActs.reduce((s, a) => s + getActivityTSS(a), 0),
     pendingRecsCount: pendingRecs.length,
-    readinessScore: todayMetrics?.readiness_score,
+    readinessScore: readiness?.score ?? null,
     weekCompliance: weekWorkouts.length > 0 ? Math.round((weekWorkouts.filter(w => w.status === "completed").length / weekWorkouts.length) * 100) : null,
-    tsb: todayMetrics?.tsb,
+    tsb: fitness?.tsb ?? null,
   };
 
   if (isLoadingAuth || loading) {
