@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { queryClientInstance } from '@/lib/query-client';
 import { parseAppleHealthXML } from '@/lib/appleHealthParser';
+import { useAuth } from '@/lib/AuthContext';
 
 const ImportContext = createContext();
 
@@ -22,6 +23,7 @@ function pick(obj, keys) {
 }
 
 export function ImportProvider({ children }) {
+  const { currentUser } = useAuth();
   const [lastImportedAt, setLastImportedAt] = useState(null);
   const [importVersion, setImportVersion] = useState(0);
   const [status, setStatus] = useState('idle');
@@ -63,56 +65,170 @@ export function ImportProvider({ children }) {
   }
 
   const startImport = async (file, mode) => {
+    if (!currentUser?.email) {
+      setStatus('error');
+      setMessage('Not logged in — please refresh and try again');
+      return;
+    }
+
     setStatus('parsing');
     setMessage('Reading file...');
     setPercent(0);
     setSaved(0);
     setTotalDays(0);
-    
+    setErrors([]);
+
     try {
-      // Parse Apple Health file client-side
-      const parseResult = await parseAppleHealthXML(file, (progress) => {
-        setPercent(Math.round(progress.percent * 0.4)); // 40% for parsing
-        setMessage(progress.message);
-      }, mode);
-      
+      // Step 1 — handle zip files
+      let xmlFile = file;
+      if (file.name?.endsWith('.zip') || file.type === 'application/zip') {
+        setMessage('Extracting zip file...');
+        const JSZip = (await import('jszip')).default;
+        const zip = new JSZip();
+        const contents = await zip.loadAsync(file);
+        const xmlEntry = Object.keys(contents.files).find(
+          name => name.endsWith('export.xml') || (name.endsWith('.xml') && !name.includes('__MACOSX'))
+        );
+        if (!xmlEntry) throw new Error('No export.xml found inside zip file');
+        const xmlBlob = await contents.files[xmlEntry].async('blob');
+        xmlFile = new File([xmlBlob], 'export.xml', { type: 'text/xml' });
+      }
+
+      // Step 2 — parse the XML
+      const parseResult = await parseAppleHealthXML(
+        xmlFile,
+        (progress) => {
+          setPercent(Math.round(progress.percent * 0.55));
+          setMessage(progress.message || 'Parsing...');
+          if (progress.counters) setCounters(progress.counters);
+        },
+        mode
+      );
+
       if (!parseResult?.metrics || parseResult.metrics.length === 0) {
-        throw new Error('No valid metrics found in file');
+        throw new Error('No valid health metrics found in file. Make sure you exported from Apple Health on iPhone.');
       }
-      
+
+      // Step 3 — filter out future dates
+      const todayStr = new Date().toISOString().split('T')[0];
+      const metricsToSave = parseResult.metrics.filter(m => m.date && m.date <= todayStr);
+
       setStatus('saving');
-      setMessage(`Saving ${parseResult.metrics.length} days of data...`);
-      setPercent(45);
-      setTotalDays(parseResult.metrics.length);
-      
-      // Save metrics to database
-      let saved = 0;
-      const batchSize = 50;
-      for (let i = 0; i < parseResult.metrics.length; i += batchSize) {
-        const batch = parseResult.metrics.slice(i, i + batchSize);
-        await base44.entities.DailyMetrics.bulkCreate(batch);
-        saved += batch.length;
-        const pct = 45 + Math.round((saved / parseResult.metrics.length) * 50);
-        setPercent(pct);
-        setMessage(`Saved ${saved} / ${parseResult.metrics.length} days`);
-        setSaved(saved);
+      setTotalDays(metricsToSave.length);
+      setMessage(`Saving ${metricsToSave.length} days of metrics...`);
+      setPercent(56);
+
+      // Step 4 — save metrics with created_by, using upsert logic
+      let savedCount = 0;
+      const importErrors = [];
+      const BATCH = 10;
+
+      for (let i = 0; i < metricsToSave.length; i += BATCH) {
+        const batch = metricsToSave.slice(i, i + BATCH);
+
+        await Promise.all(batch.map(async (metric) => {
+          try {
+            // Check for existing record for this date + user
+            const existing = await base44.entities.DailyMetrics.filter({
+              date: metric.date,
+              created_by: currentUser.email,
+            });
+
+            // Build the record — always include created_by
+            const record = {
+              date: metric.date,
+              created_by: currentUser.email,
+            };
+
+            // Only set fields that have real positive values
+            if (metric.hrv > 0) record.hrv = metric.hrv;
+            if (metric.resting_hr > 0) record.resting_hr = metric.resting_hr;
+            if (metric.sleep_hours > 0) {
+              record.sleep_hours = metric.sleep_hours;
+              record.sleep_quality = metric.sleep_quality || 'good';
+            }
+            if (metric.sleep_deep_minutes > 0) record.sleep_deep_minutes = metric.sleep_deep_minutes;
+            if (metric.sleep_rem_minutes > 0) record.sleep_rem_minutes = metric.sleep_rem_minutes;
+            if (metric.sleep_awake_minutes > 0) record.sleep_awake_minutes = metric.sleep_awake_minutes;
+            if (metric.spo2 > 0) record.spo2 = metric.spo2;
+            if (metric.respiratory_rate > 0) record.respiratory_rate = metric.respiratory_rate;
+            if (metric.active_calories > 0) record.active_calories = metric.active_calories;
+            if (metric.vo2_max > 0) record.vo2_max = metric.vo2_max;
+            if (metric.weight_kg > 0) record.weight_kg = metric.weight_kg;
+
+            if (existing && existing.length > 0) {
+              // Update — preserve manually logged fields, only overwrite Apple Health fields
+              await base44.entities.DailyMetrics.update(existing[0].id, record);
+            } else {
+              // Create new record
+              await base44.entities.DailyMetrics.create(record);
+            }
+            savedCount++;
+          } catch (err) {
+            importErrors.push(`${metric.date}: ${err.message}`);
+          }
+        }));
+
+        const pct = 56 + Math.round(((i + BATCH) / metricsToSave.length) * 35);
+        setPercent(Math.min(91, pct));
+        setMessage(`Saved ${savedCount} / ${metricsToSave.length} days...`);
+        setSaved(savedCount);
       }
-      
-      // Save workouts if any
+
+      // Step 5 — save Apple Watch workouts with created_by
       if (parseResult.workouts?.length > 0) {
-        for (let i = 0; i < parseResult.workouts.length; i += batchSize) {
-          const batch = parseResult.workouts.slice(i, i + batchSize);
-          await base44.entities.Activity.bulkCreate(batch);
+        setMessage(`Saving ${parseResult.workouts.length} workouts...`);
+        setPercent(92);
+
+        for (const workout of parseResult.workouts) {
+          try {
+            const existing = await base44.entities.Activity.filter({
+              external_id: workout.external_id,
+              created_by: currentUser.email,
+            });
+            if (!existing || existing.length === 0) {
+              await base44.entities.Activity.create({
+                ...workout,
+                created_by: currentUser.email,
+              });
+            }
+          } catch (err) {
+            // Skip duplicate workouts silently
+          }
         }
       }
-      
+
+      // Step 6 — update profile
+      setPercent(97);
+      setMessage('Finalising...');
+      try {
+        const profiles = await base44.entities.AthleteProfile.filter(
+          { created_by: currentUser.email },
+          '-created_date',
+          1
+        );
+        if (profiles?.[0]) {
+          await base44.entities.AthleteProfile.update(profiles[0].id, {
+            last_apple_health_import_date: new Date().toISOString(),
+            apple_health_days_imported: savedCount,
+            apple_health_connected: true,
+          });
+        }
+      } catch (err) {
+        // Non-fatal
+      }
+
+      setSaved(savedCount);
+      setErrors(importErrors);
       setPercent(100);
-      setMessage('Import complete!');
+      setMessage(`Import complete — ${savedCount} days saved`);
       setStatus('done');
+      markImportDone();
+
     } catch (err) {
       setStatus('error');
-      setMessage(err.message || 'Import failed');
-      console.error('Import error:', err);
+      setMessage(err.message || 'Import failed — please try again');
+      console.error('Apple Health import error:', err);
     }
   };
 
