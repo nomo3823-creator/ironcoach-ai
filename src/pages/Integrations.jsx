@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, RefreshCw, Link2, Link2Off, AlertCircle, Loader2, Upload } from "lucide-react";
+import AppleHealthImport from "@/components/integrations/AppleHealthImport";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function Integrations() {
@@ -163,18 +164,12 @@ export default function Integrations() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-foreground">Apple Health</h2>
-              <Badge variant="secondary" className="text-xs">Manual</Badge>
+              <Badge variant="secondary" className="text-xs">XML Import</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Apple Health is only accessible from native iOS apps</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Import HRV, sleep, resting HR, SpO2 & weight from your iPhone</p>
           </div>
         </div>
-        <div className="flex items-start gap-2 p-3 rounded-xl bg-secondary/40 text-xs text-muted-foreground">
-          <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-accent" />
-          <span>Apple Health data (HRV, resting HR, sleep, SpO2) can only be read by native iOS apps. Log these manually on the <strong className="text-foreground">Log Metrics</strong> page to keep your readiness scores accurate.</span>
-        </div>
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => window.location.href = '/log'}>
-          <Upload className="h-3.5 w-3.5" /> Log Metrics Manually
-        </Button>
+        <AppleHealthImport />
       </div>
     </div>
   );
