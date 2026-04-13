@@ -5,15 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, Plug, PlugZap, Watch, Activity, Bike, Heart } from "lucide-react";
+import { Loader2, Save, Plug, PlugZap, Watch, Activity, Bike, Heart, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { RACE_TYPES } from "@/lib/raceTypes";
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [form, setForm] = useState({
     first_name: "", age: "", weight_kg: "", height_cm: "", sport_history: "",
     current_ftp: "", css_per_100m: "", threshold_run_pace: "",
@@ -62,6 +65,22 @@ export default function Settings() {
 
   function toggle(field) {
     setForm((f) => ({ ...f, [field]: !f[field] }));
+  }
+
+  async function resetOnboarding() {
+    if (!window.confirm("Delete your athlete profile and restart onboarding? This cannot be undone.")) return;
+    setResetting(true);
+    try {
+      if (profile?.id) {
+        await base44.entities.AthleteProfile.delete(profile.id);
+      }
+      toast.success("Onboarding reset — redirecting…");
+      navigate("/onboarding");
+    } catch (err) {
+      console.error("Reset onboarding failed:", err);
+      toast.error(`Reset failed: ${err?.message || "unknown error"}`);
+      setResetting(false);
+    }
   }
 
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -186,6 +205,26 @@ export default function Settings() {
           {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</> : <><Save className="h-4 w-4 mr-2" />Save Profile</>}
         </Button>
       </form>
+
+      <section className="border-t border-border pt-6">
+        <h2 className="text-sm font-semibold text-foreground mb-1 uppercase tracking-wider">Developer</h2>
+        <p className="text-xs text-muted-foreground mb-4">Testing utilities. Use with care.</p>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Reset Onboarding</p>
+            <p className="text-xs text-muted-foreground">Deletes your athlete profile and restarts the onboarding flow.</p>
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={resetOnboarding}
+            disabled={resetting}
+            className="shrink-0"
+          >
+            {resetting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Resetting…</> : <><RotateCcw className="h-4 w-4 mr-2" />Reset Onboarding</>}
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }

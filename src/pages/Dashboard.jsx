@@ -152,7 +152,10 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
       return;
     }
     const p = profiles?.[0];
-    if (!p || !p.onboarding_complete) {
+    // Strict equality: only `true` lets the user through. Any missing profile,
+    // auto-created profile with the schema default `false`, or undefined flag
+    // must redirect to onboarding.
+    if (!p || p.onboarding_complete !== true) {
       navigate("/onboarding");
       return;
     }
