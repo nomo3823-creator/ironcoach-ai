@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, ReferenceLine, ScatterChart, Scatter } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ScatterChart, Scatter } from "recharts";
 import moment from "moment";
 
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
@@ -7,7 +7,8 @@ const SLEEP_QUALITY_COLOR = { poor: "#ef4444", fair: "#f97316", good: "#22c55e",
 
 export default function RecoveryTab({ metrics }) {
   const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1);
-  const last90 = sorted.slice(-90);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const last90 = sorted.filter(m => m.date <= todayStr).slice(-90);
 
   // HRV with 14-day rolling avg
   const hrvData = last90.filter(m => m.hrv).map((m, i, arr) => {
@@ -27,11 +28,11 @@ export default function RecoveryTab({ metrics }) {
   }));
 
   // Sleep
-  const sleepData = last90.filter(m => m.sleep_hours).map(m => ({
+  const sleepData = last90.filter(m => m.sleep_hours && m.sleep_hours > 0 && m.sleep_hours < 24).map(m => ({
     date: moment(m.date).format("MMM D"),
-    hours: m.sleep_hours,
-    quality: m.sleep_quality,
-    color: SLEEP_QUALITY_COLOR[m.sleep_quality] || "hsl(199 89% 48%)",
+    hours: parseFloat(m.sleep_hours.toFixed(1)),
+    quality: m.sleep_quality || "good",
+    color: SLEEP_QUALITY_COLOR[m.sleep_quality] || "#3b82f6",
   }));
 
   // Body Battery
@@ -105,7 +106,7 @@ export default function RecoveryTab({ metrics }) {
                 <ReferenceLine y={7.5} stroke="#22c55e" strokeDasharray="3 3" />
                 <Bar dataKey="hours" radius={[3, 3, 0, 0]}>
                   {sleepData.map((d, i) => (
-                    <cell key={i} fill={d.color} />
+                    <Cell key={i} fill={d.color} />
                   ))}
                 </Bar>
               </BarChart>
