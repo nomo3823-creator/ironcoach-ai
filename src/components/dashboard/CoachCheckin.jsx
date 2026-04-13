@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import moment from "moment";
 
-export default function CoachCheckin({ profile, metrics, workout }) {
+export default function CoachCheckin({ profile, metrics, workout, journalEntries, pendingRecs, weekWorkouts }) {
   const [checkin, setCheckin] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
@@ -35,6 +35,7 @@ export default function CoachCheckin({ profile, metrics, workout }) {
       recentContext = lastMsgs.map((m) => `${m.role}: ${m.content}`).join("\n");
     }
 
+    const weekCompliance = weekWorkouts?.length > 0 ? Math.round((weekWorkouts?.filter(w => w.status === "completed").length / weekWorkouts?.length) * 100) : 0;
     const prompt = `You are IronCoach AI. Write a personalized morning check-in for this athlete. Be direct, reference specific numbers, never be generic. Max 4 sentences.
 
 Athlete: ${profile?.first_name || profile?.full_name || "Athlete"}
@@ -44,6 +45,11 @@ Sleep: ${metrics?.sleep_hours || "?"}h (${metrics?.sleep_quality || "?"}) | Body
 Readiness: ${metrics?.readiness_score || "?"}/100 | TSB: ${metrics?.tsb || "?"}
 Today's workout: ${workout ? `${workout.title} (${workout.sport}, ${workout.duration_minutes}min, ${workout.intensity})` : "Rest day"}
 Injury flag: ${metrics?.injury_flag ? "YES" : "No"} | Illness: ${metrics?.illness_flag ? "YES" : "No"}
+
+Recent journal notes: ${journalEntries?.slice(0, 3).map(j => j.content?.substring(0, 100)).join(' | ') || 'None yet'}
+Pending plan recommendations: ${pendingRecs?.length || 0} awaiting approval
+Week compliance so far: ${weekWorkouts?.filter(w => w.status === "completed").length || 0} of ${weekWorkouts?.length || 0} sessions completed
+If there are pending recommendations, mention them briefly and direct the athlete to the Today page to review them.
 
 Recent chat context:
 ${recentContext || "No recent conversations."}
@@ -98,7 +104,7 @@ Reference a specific number, make an adjustment recommendation if needed, and ti
           ) : !metrics ? (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <ClipboardList className="h-4 w-4 shrink-0" />
-              <span>Log today's metrics to get your personalized check-in. <Link to="/log" className="text-primary underline underline-offset-2">Log now →</Link></span>
+              <span>Log today's metrics to get your personalized check-in. <Link to="/recovery" className="text-primary underline underline-offset-2">Log now →</Link></span>
             </div>
           ) : null}
         </div>
