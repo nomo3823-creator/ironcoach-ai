@@ -116,10 +116,6 @@ export default function CoachChat() {
     setActive(c);
     setMessages([]);
 
-    // Inject full athlete context as system message so every new session starts with full memory
-    const contextMsg = buildContextString(ctx.profile, ctx.metrics, ctx.workout, ctx.races, userName);
-    await base44.agents.addMessage(c, { role: "system", content: contextMsg });
-
     return c;
   }
 
