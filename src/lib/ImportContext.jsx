@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { queryClientInstance } from '@/lib/query-client';
 import { parseAppleHealthXML } from '@/lib/appleHealthParser';
 
 const ImportContext = createContext();
@@ -40,6 +41,10 @@ export function ImportProvider({ children }) {
     const now = Date.now();
     setLastImportedAt(now);
     localStorage.setItem('ironcoach:last_import_at', String(now));
+    // Invalidate React Query cache for metrics and activities
+    queryClientInstance.invalidateQueries({ queryKey: ['DailyMetrics'] });
+    queryClientInstance.invalidateQueries({ queryKey: ['Activity'] });
+    queryClientInstance.invalidateQueries({ queryKey: ['PlannedWorkout'] });
     window.dispatchEvent(new Event('ironcoach:imported'));
     setTimeout(() => setStatus('done'), 100);
   };
