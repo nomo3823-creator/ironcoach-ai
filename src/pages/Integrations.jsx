@@ -20,17 +20,17 @@ export default function Integrations() {
       .then(data => setProfile(data[0] || null));
   }, [currentUser]);
 
-  // Check for Strava OAuth callback code in URL
+  // Listen for Strava OAuth callback via postMessage from new tab
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const scope = params.get("scope");
-    if (code && scope) {
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      handleStravaCode(code);
+    function onMessage(e) {
+      if (e.data?.type === "strava_callback") {
+        if (e.data.code) handleStravaCode(e.data.code);
+        else toast({ title: "Strava connection cancelled", variant: "destructive" });
+      }
     }
-  }, []);
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [currentUser]);
 
   async function handleStravaCode(code) {
     setConnecting(true);
@@ -49,13 +49,13 @@ export default function Integrations() {
   async function connectStrava() {
     setConnecting(true);
     try {
-      const redirectUri = window.location.origin + "/integrations";
+      const redirectUri = window.location.origin + "/strava-callback";
       const res = await base44.functions.invoke("stravaAuth", { redirect_uri: redirectUri });
-      window.location.href = res.data.url;
+      window.open(res.data.url, "_blank", "width=600,height=700");
     } catch (e) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
-      setConnecting(false);
     }
+    setConnecting(false);
   }
 
   async function disconnectStrava() {

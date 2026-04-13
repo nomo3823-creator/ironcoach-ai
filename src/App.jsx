@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import LogMetrics from './pages/LogMetrics';
 import Onboarding from './pages/Onboarding';
 import Integrations from './pages/Integrations';
+import StravaCallback from './pages/StravaCallback';
 
 const AuthenticatedApp = () => {
   const { isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
       <Route path="/coach" element={<CoachChat />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/integrations" element={<Integrations />} />
+      <Route path="/strava-callback" element={<StravaCallback />} />
       <Route path="/log" element={<LogMetrics />} />
       <Route path="*" element={<PageNotFound />} />
     </Route>
