@@ -1,0 +1,74 @@
+{
+  "name": "RacePrediction",
+  "type": "object",
+  "properties": {
+    "race_type": {
+      "type": "string",
+      "title": "Race Type"
+    },
+    "race_distance": {
+      "type": "string",
+      "title": "Race Distance Label"
+    },
+    "predicted_swim_time": {
+      "type": "string",
+      "title": "Predicted Swim Time"
+    },
+    "predicted_bike_time": {
+      "type": "string",
+      "title": "Predicted Bike Time"
+    },
+    "predicted_run_time": {
+      "type": "string",
+      "title": "Predicted Run Time"
+    },
+    "predicted_total_time": {
+      "type": "string",
+      "title": "Predicted Total Time"
+    },
+    "predicted_total_seconds": {
+      "type": "number",
+      "title": "Total Seconds (for charting)"
+    },
+    "ftp_used": {
+      "type": "number",
+      "title": "FTP Used"
+    },
+    "threshold_pace_used": {
+      "type": "string",
+      "title": "Threshold Pace Used"
+    },
+    "css_used": {
+      "type": "number",
+      "title": "CSS Used (s/100m)"
+    },
+    "ctl_at_prediction": {
+      "type": "number",
+      "title": "CTL at Prediction"
+    },
+    "atl_at_prediction": {
+      "type": "number",
+      "title": "ATL at Prediction"
+    },
+    "tsb_at_prediction": {
+      "type": "number",
+      "title": "TSB at Prediction"
+    },
+    "conditions": {
+      "type": "string",
+      "title": "Race Conditions"
+    },
+    "experience_level": {
+      "type": "string",
+      "title": "Experience Level"
+    },
+    "coaching_note": {
+      "type": "string",
+      "title": "AI Coaching Note"
+    }
+  },
+  "required": [
+    "race_type",
+    "predicted_total_time"
+  ]
+}

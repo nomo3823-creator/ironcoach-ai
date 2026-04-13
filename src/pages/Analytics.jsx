@@ -7,6 +7,7 @@ import FitnessChart from "../components/analytics/FitnessChart";
 import SportTrends from "../components/analytics/SportTrends";
 import RecoveryTrends from "../components/analytics/RecoveryTrends";
 import ZoneDistribution from "../components/analytics/ZoneDistribution";
+import RacePredictor from "../components/analytics/RacePredictor";
 
 export default function Analytics() {
   const { currentUser } = useAuth();
@@ -36,16 +37,18 @@ export default function Analytics() {
         <p className="text-sm text-muted-foreground mt-0.5">Performance trends and training load analysis</p>
       </div>
       <Tabs defaultValue="fitness">
-        <TabsList className="bg-secondary">
+        <TabsList className="bg-secondary flex-wrap h-auto">
           <TabsTrigger value="fitness">Fitness & Form</TabsTrigger>
           <TabsTrigger value="sports">Sport Trends</TabsTrigger>
           <TabsTrigger value="recovery">Recovery</TabsTrigger>
           <TabsTrigger value="zones">Zones</TabsTrigger>
+          <TabsTrigger value="predictor">Race Predictor</TabsTrigger>
         </TabsList>
         <TabsContent value="fitness" className="mt-5"><FitnessChart metrics={metrics} /></TabsContent>
         <TabsContent value="sports" className="mt-5"><SportTrends activities={activities} /></TabsContent>
         <TabsContent value="recovery" className="mt-5"><RecoveryTrends metrics={metrics} /></TabsContent>
         <TabsContent value="zones" className="mt-5"><ZoneDistribution activities={activities} /></TabsContent>
+        <TabsContent value="predictor" className="mt-5"><RacePredictor activities={activities} metrics={metrics} /></TabsContent>
       </Tabs>
     </div>
   );
