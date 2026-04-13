@@ -729,19 +729,21 @@ export default function CoachChat() {
             )}
 
             {/* Starter chips */}
-            <div className="grid sm:grid-cols-2 gap-2.5 max-w-lg w-full mb-6">
-              {loadingStarters ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-14 rounded-xl border border-border bg-card animate-pulse" />
-              )) : starters.map(q => (
-                <button
-                  key={q}
-                  onClick={() => send(q)}
-                  className="p-3 rounded-xl border border-border bg-card text-sm text-left text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
+            {(loadingStarters || starters.length > 0) && (
+              <div className="grid sm:grid-cols-2 gap-2.5 max-w-lg w-full mb-6">
+                {loadingStarters ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-14 rounded-xl border border-border bg-card animate-pulse" />
+                )) : starters.map(q => (
+                  <button
+                    key={q}
+                    onClick={() => send(q)}
+                    className="p-3 rounded-xl border border-border bg-card text-sm text-left text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
             <Button onClick={() => newConv()}>
               <Plus className="h-4 w-4 mr-2" /> Start Session
             </Button>
