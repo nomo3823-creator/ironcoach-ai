@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
     }
 
     // Use user-scoped entity calls so created_by is set to the user's email
-    const existing = await base44.entities.Activity.filter({ source: 'strava' });
+    const existing = await base44.entities.Activity.filter({ source: 'strava', created_by: user.email });
     const existingIds = new Set(existing.map(a => a.external_id).filter(Boolean));
 
     const toCreate = stravaActivities
