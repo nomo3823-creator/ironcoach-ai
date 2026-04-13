@@ -171,7 +171,7 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
     const [workouts, metrics, acts, races, allMetrics] = await Promise.all([
       base44.entities.PlannedWorkout.filter({ date: today }),
       base44.entities.DailyMetrics.filter({ date: today }),
-      base44.entities.Activity.list("-date", 20),
+      base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 20),
       base44.entities.Race.list("date", 10),
       base44.entities.DailyMetrics.list("date", 20),
     ]);
