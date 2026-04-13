@@ -34,7 +34,7 @@ function MetricCard({ label, value, unit, change, description, color }) {
 
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
 
-export default function OverviewTab({ metrics, activities, profile }) {
+export default function OverviewTab({ metrics, activities, profile, readiness }) {
   const [aiSummary, setAiSummary] = useState("");
   const [loadingAI, setLoadingAI] = useState(false);
 
@@ -107,7 +107,7 @@ Cover: current fitness state, fatigue level, what to focus on this week. Be dire
           change={weekAgo ? Math.round(fitnessCalc.tsb - (Object.values(fitnessCalc.history || {})[Math.max(0, Object.keys(fitnessCalc.history || {}).length - 8)]?.tsb || 0)) : undefined} color="tsb" />
         <MetricCard label="Weekly TSS" value={Math.round(weeklyTSS)} unit="pts"
           description="Total training stress this week. Typical: 300-500 for 8-12hr/week athletes." />
-        <MetricCard label="Readiness" value={latest?.readiness_score ?? null} unit="/100"
+        <MetricCard label="Readiness" value={readiness?.score ?? latest?.readiness_score ?? null} unit="/100"
           description="Composite score from HRV, sleep, body battery, TSB, load." />
       </div>
 

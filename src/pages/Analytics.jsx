@@ -28,7 +28,10 @@ export default function Analytics() {
     if (!currentUser) return;
     async function load() {
       const [m, a, p] = await Promise.all([
-        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "date", 500),
+        // "-date" so we get the NEWEST 500 metrics. With "date" (ascending) we
+        // were fetching the oldest 500 rows, missing all recent HRV/sleep data
+        // and producing a readiness score that disagreed with Dashboard/Recovery.
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 500),
         base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 500),
         base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1),
       ]);
@@ -77,7 +80,7 @@ export default function Analytics() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-5">
-          <OverviewTab metrics={metrics} activities={activities} profile={profile} />
+          <OverviewTab metrics={metrics} activities={activities} profile={profile} readiness={readiness} />
         </TabsContent>
         <TabsContent value="load" className="mt-5">
           <LoadTab metrics={metrics} activities={activities} />
