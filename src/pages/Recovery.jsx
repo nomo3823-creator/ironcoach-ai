@@ -10,6 +10,7 @@ import moment from "moment";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { calculateReadiness } from "@/lib/readinessEngine";
+import { getEffectiveTodayMetrics } from "@/lib/metricsUtils";
 import ReadinessBreakdown from "@/components/ReadinessBreakdown";
 
 export default function Recovery() {
@@ -35,37 +36,26 @@ export default function Recovery() {
   async function loadData() {
     try {
       const today = new Date().toLocaleDateString("en-CA");
-      
-      // First try today's metrics
-      let metricsResult = await base44.entities.DailyMetrics.filter({ 
-        date: today, 
-        created_by: currentUser.email 
-      });
-      
-      // If nothing for today, get the most recent record
-      if (!metricsResult || metricsResult.length === 0) {
-        const recent = await base44.entities.DailyMetrics.filter(
-          { created_by: currentUser.email },
-          '-date',
-          3
-        );
-        metricsResult = recent || [];
-      }
-      
-      const [activitiesData] = await Promise.all([
+
+      const [todayOnly, recent30, activitiesData] = await Promise.all([
+        base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 30),
         base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 30),
       ]);
-      
-      const m = metricsResult[0];
-      setTodayMetrics(m || null);
-      setMetricsDate(m?.date || null);
-      setCompletedCheckin(m?.morning_checkin_complete || false);
-      setSleepQuality(m?.sleep_quality || "");
-      setEnergy(m?.energy_level || 0);
-      setLegsFeel(m?.legs_feeling || "");
-      setAllMetrics(metricsResult || []);
+
+      // Merge today's row (may hold morning check-in with null Apple Health
+      // fields) with the most recent non-null values from the last 30 days.
+      const merged = getEffectiveTodayMetrics(todayOnly?.[0], recent30 || []);
+
+      setTodayMetrics(merged);
+      setMetricsDate(merged?.date || null);
+      setCompletedCheckin(merged?.morning_checkin_complete || false);
+      setSleepQuality(merged?.sleep_quality || "");
+      setEnergy(merged?.energy_level || 0);
+      setLegsFeel(merged?.legs_feeling || "");
+      setAllMetrics(recent30 || []);
       setActivities(activitiesData || []);
-      const readinessScore = calculateReadiness(metricsResult || [], activitiesData || []);
+      const readinessScore = calculateReadiness(recent30 || [], activitiesData || []);
       setReadiness(readinessScore);
     } catch (err) {
       toast.error("Failed to load Recovery data");

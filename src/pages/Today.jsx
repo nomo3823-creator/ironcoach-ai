@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import moment from "moment";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { getEffectiveTodayMetrics } from "@/lib/metricsUtils";
 
 export default function Today() {
   const { currentUser } = useAuth();
@@ -32,7 +33,7 @@ export default function Today() {
       const weekStart = moment().startOf('isoWeek').format('YYYY-MM-DD');
       const weekEnd = moment().endOf('isoWeek').format('YYYY-MM-DD');
 
-      const [twData, tmData, tomData, recData, weekData] = await Promise.all([
+      const [twData, tmData, tomData, recData, weekData, recentMetrics] = await Promise.all([
         base44.entities.PlannedWorkout.filter({ date: today, created_by: currentUser.email }),
         base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
         base44.entities.PlannedWorkout.filter({ date: tomorrow, created_by: currentUser.email }),
@@ -42,10 +43,13 @@ export default function Today() {
           created_by: currentUser.email,
         }),
         base44.entities.PlannedWorkout.filter({ created_by: currentUser.email }),
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 14),
       ]);
 
       setTodayWorkout(twData?.[0] || null);
-      setTodayMetrics(tmData?.[0] || null);
+      // Fall back to the most-recent non-null Apple Health values when today's
+      // row is present but its health fields are still null (export lag).
+      setTodayMetrics(getEffectiveTodayMetrics(tmData?.[0], recentMetrics || []));
       setTomorrowWorkout(tomData?.[0] || null);
       setRecommendations(recData || []);
       setWeekWorkouts(weekData || []);

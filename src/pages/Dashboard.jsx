@@ -19,6 +19,7 @@ import WeeklySnapshot from "@/components/dashboard/WeeklySnapshot";
 import ReadinessBreakdown from "@/components/ReadinessBreakdown";
 import { calculateReadiness } from "@/lib/readinessEngine";
 import { getActivityTSS } from "@/lib/planUtils";
+import { getEffectiveTodayMetrics } from "@/lib/metricsUtils";
 import moment from "moment";
 
 const SkeletonSection = () => (
@@ -86,8 +87,13 @@ export default function Dashboard() {
       ]);
 
       setProfile(profileData[0] || null);
-      setTodayMetrics(metricsResult[0] || null);
-      setMetricsDate(metricsResult[0]?.date || null);
+      // Merge today's row with most-recent non-null values so HRV/sleep/RHR
+      // tiles show yesterday's numbers when Apple Health hasn't synced today
+      // yet. Manual check-in fields (mood, legs_feeling, energy_level, etc.)
+      // from today's row always win.
+      const effective = getEffectiveTodayMetrics(metricsResult[0], allMetricsData || []);
+      setTodayMetrics(effective);
+      setMetricsDate(effective?.date || null);
       setActivities(activitiesData || []);
       setRace(raceData?.sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null);
       setPendingRecs(recData || []);
