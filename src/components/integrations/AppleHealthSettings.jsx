@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Loader2, AlertCircle } from "lucide-react";
+import { RefreshCw, Loader2, AlertCircle, Stethoscope } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import AppleHealthImport from "./AppleHealthImport";
 import moment from "moment";
@@ -14,6 +14,53 @@ export default function AppleHealthSettings() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expandImport, setExpandImport] = useState(false);
+  const [diag, setDiag] = useState(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+
+  async function runDiagnostic() {
+    setDiagLoading(true);
+    setDiag(null);
+    try {
+      // Query DailyMetrics three ways to triangulate the problem:
+      //   1. Scoped by current user email (what every consumer page does)
+      //   2. Without any filter (gives us the total count; if rows exist here
+      //      but not in #1, created_by is the problem)
+      //   3. Filtered by today's local date + user (what Dashboard/Recovery
+      //      use for the "today" tiles)
+      const today = new Date().toLocaleDateString("en-CA");
+      const [scoped, unscoped, todayOnly, activities] = await Promise.all([
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 5),
+        base44.entities.DailyMetrics.list("-date", 5),
+        base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
+        base44.entities.Activity.filter({ created_by: currentUser.email, source: "apple_health" }, "-date", 5),
+      ]);
+      setDiag({
+        currentUserEmail: currentUser.email,
+        today,
+        scopedCount: scoped?.length ?? 0,
+        unscopedCount: unscoped?.length ?? 0,
+        todayMatches: todayOnly?.length ?? 0,
+        appleHealthWorkouts: activities?.length ?? 0,
+        scopedSample: (scoped || []).slice(0, 3).map(r => ({
+          date: r.date,
+          hrv: r.hrv,
+          sleep_hours: r.sleep_hours,
+          resting_hr: r.resting_hr,
+          created_by: r.created_by,
+          import_source: r.import_source,
+        })),
+        unscopedSample: (unscoped || []).slice(0, 3).map(r => ({
+          date: r.date,
+          hrv: r.hrv,
+          created_by: r.created_by,
+        })),
+      });
+    } catch (err) {
+      setDiag({ error: err?.message || "Diagnostic failed" });
+    } finally {
+      setDiagLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!currentUser) return;
@@ -112,6 +159,72 @@ export default function AppleHealthSettings() {
         <span>
           Apple Health data automatically feeds into your <strong className="text-foreground">readiness score, workout recommendations,</strong> and <strong className="text-foreground">recovery analytics.</strong> No manual logging needed.
         </span>
+      </div>
+
+      {/* Diagnostic — helps figure out why imported data isn't rendering */}
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2">
+            <Stethoscope className="h-4 w-4 text-accent mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-sm text-foreground">Data diagnostic</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Inspect what's actually in your Base44 DB right now.
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={runDiagnostic} disabled={diagLoading}>
+            {diagLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Run"}
+          </Button>
+        </div>
+
+        {diag && (
+          <div className="space-y-2 text-xs">
+            {diag.error ? (
+              <p className="text-destructive">Error: {diag.error}</p>
+            ) : (
+              <>
+                <div className="rounded-lg bg-secondary/40 p-3 space-y-1 font-mono">
+                  <p><span className="text-muted-foreground">user email:</span> {diag.currentUserEmail}</p>
+                  <p><span className="text-muted-foreground">today (local):</span> {diag.today}</p>
+                  <p><span className="text-muted-foreground">rows owned by you:</span> <strong className="text-foreground">{diag.scopedCount}</strong></p>
+                  <p><span className="text-muted-foreground">rows total (any owner):</span> <strong className="text-foreground">{diag.unscopedCount}</strong></p>
+                  <p><span className="text-muted-foreground">rows dated today:</span> <strong className="text-foreground">{diag.todayMatches}</strong></p>
+                  <p><span className="text-muted-foreground">apple health workouts:</span> <strong className="text-foreground">{diag.appleHealthWorkouts}</strong></p>
+                </div>
+
+                {diag.scopedCount > 0 && (
+                  <div className="rounded-lg bg-secondary/40 p-3 space-y-1">
+                    <p className="font-semibold text-foreground">Your latest rows:</p>
+                    <pre className="text-[10px] overflow-x-auto">{JSON.stringify(diag.scopedSample, null, 2)}</pre>
+                  </div>
+                )}
+
+                {diag.scopedCount === 0 && diag.unscopedCount > 0 && (
+                  <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 space-y-2">
+                    <p className="text-destructive font-semibold">Diagnosis: rows exist in the table but none are owned by you.</p>
+                    <p className="text-muted-foreground">The imported records have created_by = something other than your email. Sample:</p>
+                    <pre className="text-[10px] overflow-x-auto">{JSON.stringify(diag.unscopedSample, null, 2)}</pre>
+                  </div>
+                )}
+
+                {diag.scopedCount === 0 && diag.unscopedCount === 0 && (
+                  <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3">
+                    <p className="text-destructive font-semibold">Diagnosis: DailyMetrics table is empty.</p>
+                    <p className="text-muted-foreground mt-1">The import isn't actually saving rows. Open DevTools → Network during a fresh import and watch for 4xx responses from /api/.../DailyMetrics.</p>
+                  </div>
+                )}
+
+                {diag.scopedCount > 0 && diag.todayMatches === 0 && (
+                  <div className="rounded-lg bg-accent/10 border border-accent/30 p-3">
+                    <p className="text-accent font-semibold">Diagnosis: data imported, but nothing for today.</p>
+                    <p className="text-muted-foreground mt-1">Apple Health exports typically lag by a day. Dashboard/Today show "—" for today because no Apple Health row exists for {diag.today} yet. Analytics and Recovery should still populate from the historical rows.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
