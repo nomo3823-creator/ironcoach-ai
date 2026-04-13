@@ -1,0 +1,91 @@
+{
+  "name": "AthleteProfile",
+  "type": "object",
+  "properties": {
+    "age": {
+      "type": "number",
+      "title": "Age"
+    },
+    "weight_kg": {
+      "type": "number",
+      "title": "Weight (kg)"
+    },
+    "height_cm": {
+      "type": "number",
+      "title": "Height (cm)"
+    },
+    "sport_history": {
+      "type": "string",
+      "title": "Sport History"
+    },
+    "current_ftp": {
+      "type": "number",
+      "title": "Current FTP (watts)"
+    },
+    "css_per_100m": {
+      "type": "number",
+      "title": "CSS per 100m (seconds)"
+    },
+    "threshold_run_pace": {
+      "type": "string",
+      "title": "Threshold Run Pace (min/km)"
+    },
+    "vo2_max": {
+      "type": "number",
+      "title": "VO2 Max"
+    },
+    "resting_hr": {
+      "type": "number",
+      "title": "Resting HR"
+    },
+    "max_hr": {
+      "type": "number",
+      "title": "Max HR"
+    },
+    "weekly_hours_available": {
+      "type": "number",
+      "title": "Weekly Hours Available"
+    },
+    "experience_level": {
+      "type": "string",
+      "title": "Experience Level",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "elite"
+      ]
+    },
+    "notification_daily_brief": {
+      "type": "boolean",
+      "title": "Daily Brief Notifications",
+      "default": true
+    },
+    "notification_workout_reminder": {
+      "type": "boolean",
+      "title": "Workout Reminders",
+      "default": true
+    },
+    "daily_brief_time": {
+      "type": "string",
+      "title": "Daily Brief Time",
+      "default": "06:00"
+    },
+    "strava_connected": {
+      "type": "boolean",
+      "title": "Strava Connected",
+      "default": false
+    },
+    "garmin_connected": {
+      "type": "boolean",
+      "title": "Garmin Connected",
+      "default": false
+    },
+    "apple_health_connected": {
+      "type": "boolean",
+      "title": "Apple Health Connected",
+      "default": false
+    }
+  },
+  "required": []
+}

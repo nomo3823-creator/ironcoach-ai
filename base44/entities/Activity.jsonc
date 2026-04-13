@@ -1,0 +1,102 @@
+{
+  "name": "Activity",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "sport": {
+      "type": "string",
+      "title": "Sport",
+      "enum": [
+        "swim",
+        "bike",
+        "run",
+        "brick",
+        "strength",
+        "other"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "title": "Duration (min)"
+    },
+    "distance_km": {
+      "type": "number",
+      "title": "Distance (km)"
+    },
+    "avg_hr": {
+      "type": "number",
+      "title": "Avg HR"
+    },
+    "max_hr": {
+      "type": "number",
+      "title": "Max HR"
+    },
+    "avg_pace": {
+      "type": "string",
+      "title": "Avg Pace"
+    },
+    "avg_power": {
+      "type": "number",
+      "title": "Avg Power"
+    },
+    "normalized_power": {
+      "type": "number",
+      "title": "Normalized Power"
+    },
+    "tss": {
+      "type": "number",
+      "title": "TSS"
+    },
+    "calories": {
+      "type": "number",
+      "title": "Calories"
+    },
+    "elevation_gain": {
+      "type": "number",
+      "title": "Elevation Gain (m)"
+    },
+    "cadence": {
+      "type": "number",
+      "title": "Cadence"
+    },
+    "source": {
+      "type": "string",
+      "title": "Source",
+      "enum": [
+        "strava",
+        "garmin",
+        "apple_watch",
+        "manual"
+      ]
+    },
+    "external_id": {
+      "type": "string",
+      "title": "External ID"
+    },
+    "ai_feedback": {
+      "type": "string",
+      "title": "AI Feedback"
+    },
+    "planned_workout_id": {
+      "type": "string",
+      "title": "Planned Workout ID"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "date",
+    "sport",
+    "title"
+  ]
+}

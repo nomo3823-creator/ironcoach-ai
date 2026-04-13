@@ -1,0 +1,89 @@
+{
+  "name": "DailyMetrics",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "hrv": {
+      "type": "number",
+      "title": "HRV (ms)"
+    },
+    "resting_hr": {
+      "type": "number",
+      "title": "Resting HR"
+    },
+    "sleep_hours": {
+      "type": "number",
+      "title": "Sleep Hours"
+    },
+    "sleep_quality": {
+      "type": "string",
+      "title": "Sleep Quality",
+      "enum": [
+        "poor",
+        "fair",
+        "good",
+        "excellent"
+      ]
+    },
+    "body_battery": {
+      "type": "number",
+      "title": "Body Battery"
+    },
+    "spo2": {
+      "type": "number",
+      "title": "SpO2 %"
+    },
+    "readiness_score": {
+      "type": "number",
+      "title": "Readiness Score (0-100)"
+    },
+    "ctl": {
+      "type": "number",
+      "title": "CTL (Fitness)"
+    },
+    "atl": {
+      "type": "number",
+      "title": "ATL (Fatigue)"
+    },
+    "tsb": {
+      "type": "number",
+      "title": "TSB (Form)"
+    },
+    "weight_kg": {
+      "type": "number",
+      "title": "Weight (kg)"
+    },
+    "mood": {
+      "type": "string",
+      "title": "Mood",
+      "enum": [
+        "great",
+        "good",
+        "okay",
+        "tired",
+        "exhausted"
+      ]
+    },
+    "injury_flag": {
+      "type": "boolean",
+      "title": "Injury Flag",
+      "default": false
+    },
+    "illness_flag": {
+      "type": "boolean",
+      "title": "Illness Flag",
+      "default": false
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "date"
+  ]
+}

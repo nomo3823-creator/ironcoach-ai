@@ -1,0 +1,76 @@
+{
+  "name": "WorkoutTemplate",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "sport": {
+      "type": "string",
+      "title": "Sport",
+      "enum": [
+        "swim",
+        "bike",
+        "run",
+        "brick",
+        "strength"
+      ]
+    },
+    "category": {
+      "type": "string",
+      "title": "Category",
+      "enum": [
+        "endurance",
+        "tempo",
+        "intervals",
+        "threshold",
+        "recovery",
+        "race_simulation",
+        "technique"
+      ]
+    },
+    "duration_minutes": {
+      "type": "number",
+      "title": "Duration (min)"
+    },
+    "intensity": {
+      "type": "string",
+      "title": "Intensity",
+      "enum": [
+        "easy",
+        "moderate",
+        "hard",
+        "race_pace",
+        "recovery"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "structure": {
+      "type": "string",
+      "title": "Workout Structure"
+    },
+    "target_zones": {
+      "type": "string",
+      "title": "Target Zones"
+    },
+    "tss_estimate": {
+      "type": "number",
+      "title": "TSS Estimate"
+    },
+    "suitable_phases": {
+      "type": "array",
+      "title": "Suitable Phases",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "sport"
+  ]
+}

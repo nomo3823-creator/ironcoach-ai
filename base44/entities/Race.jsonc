@@ -1,0 +1,96 @@
+{
+  "name": "Race",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Race Name"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Race Date"
+    },
+    "distance": {
+      "type": "string",
+      "title": "Distance",
+      "enum": [
+        "70.3",
+        "140.6"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "enum": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "course_profile": {
+      "type": "string",
+      "title": "Course Profile"
+    },
+    "elevation_m": {
+      "type": "number",
+      "title": "Elevation (m)"
+    },
+    "location": {
+      "type": "string",
+      "title": "Location"
+    },
+    "predicted_swim_time": {
+      "type": "string",
+      "title": "Predicted Swim Time"
+    },
+    "predicted_t1_time": {
+      "type": "string",
+      "title": "Predicted T1 Time"
+    },
+    "predicted_bike_time": {
+      "type": "string",
+      "title": "Predicted Bike Time"
+    },
+    "predicted_t2_time": {
+      "type": "string",
+      "title": "Predicted T2 Time"
+    },
+    "predicted_run_time": {
+      "type": "string",
+      "title": "Predicted Run Time"
+    },
+    "predicted_total_time": {
+      "type": "string",
+      "title": "Predicted Total Time"
+    },
+    "readiness_score": {
+      "type": "number",
+      "title": "Race Readiness Score"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    },
+    "checklist": {
+      "type": "array",
+      "title": "Pre-Race Checklist",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "checked": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "name",
+    "date",
+    "distance"
+  ]
+}

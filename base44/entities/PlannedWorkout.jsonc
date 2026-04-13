@@ -1,0 +1,105 @@
+{
+  "name": "PlannedWorkout",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "sport": {
+      "type": "string",
+      "title": "Sport",
+      "enum": [
+        "swim",
+        "bike",
+        "run",
+        "brick",
+        "strength",
+        "rest"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "title": "Duration (min)"
+    },
+    "intensity": {
+      "type": "string",
+      "title": "Intensity",
+      "enum": [
+        "easy",
+        "moderate",
+        "hard",
+        "race_pace",
+        "recovery"
+      ]
+    },
+    "target_hr_zone": {
+      "type": "string",
+      "title": "Target HR Zone"
+    },
+    "target_pace": {
+      "type": "string",
+      "title": "Target Pace"
+    },
+    "target_power": {
+      "type": "number",
+      "title": "Target Power (watts)"
+    },
+    "structure": {
+      "type": "string",
+      "title": "Workout Structure"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "planned",
+        "completed",
+        "skipped",
+        "modified"
+      ],
+      "default": "planned"
+    },
+    "ai_adjustment_reason": {
+      "type": "string",
+      "title": "AI Adjustment Reason"
+    },
+    "phase": {
+      "type": "string",
+      "title": "Training Phase",
+      "enum": [
+        "base",
+        "build",
+        "peak",
+        "taper",
+        "race_week"
+      ]
+    },
+    "week_number": {
+      "type": "number",
+      "title": "Week Number"
+    },
+    "race_id": {
+      "type": "string",
+      "title": "Race ID"
+    },
+    "tss_estimate": {
+      "type": "number",
+      "title": "TSS Estimate"
+    }
+  },
+  "required": [
+    "date",
+    "sport",
+    "title"
+  ]
+}
