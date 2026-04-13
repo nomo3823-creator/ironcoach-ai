@@ -16,6 +16,34 @@ const INSTRUCTIONS = [
   "Upload the export.zip or export.xml file below"
 ];
 
+const IMPORT_MODES = [
+  {
+    id: 'smart',
+    label: 'Smart import (recommended)',
+    description: 'Last 90 days: full data. Last 2 years: HRV & weight only. Older: skipped.',
+    estimatedTime: '2-4 minutes',
+  },
+  {
+    id: '90days',
+    label: 'Last 90 days only',
+    description: 'Quick setup with recent metrics only.',
+    estimatedTime: '1-2 minutes',
+  },
+  {
+    id: '2years',
+    label: 'Last 2 years',
+    description: 'Full baseline data for trends & historical analysis.',
+    estimatedTime: '3-6 minutes',
+  },
+  {
+    id: 'alltime',
+    label: 'All time (comprehensive)',
+    description: 'Everything in your Apple Health export. Warning: very large files may take 10+ minutes.',
+    estimatedTime: '5-15 minutes',
+    warning: true,
+  },
+];
+
 async function extractXMLFromZip(zipFile) {
   try {
     const zip = new JSZip();
@@ -75,7 +103,7 @@ function ImportStep1({ onStart }) {
   );
 }
 
-function ImportStep2({ onFile, loading }) {
+function ImportStep2({ onFile, loading, selectedMode, onModeChange }) {
   const dropZoneRef = useRef();
   const fileRef = useRef();
 
@@ -90,16 +118,36 @@ function ImportStep2({ onFile, loading }) {
     if (file) onFile(file);
   }
 
-  const fileSizeMB = (size) => (size / 1024 / 1024).toFixed(1);
-  const estimateTime = (size) => {
-    const mb = size / 1024 / 1024;
-    if (mb < 100) return '1-2 minutes';
-    if (mb < 500) return '2-5 minutes';
-    return '5-10 minutes';
-  };
-
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">Import range:</label>
+        <div className="grid grid-cols-1 gap-2">
+          {IMPORT_MODES.map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => onModeChange(mode.id)}
+              className={`p-3 rounded-lg border-2 transition-colors text-left ${
+                selectedMode === mode.id
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-secondary/30 hover:bg-secondary/50'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">{mode.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{mode.description}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-semibold text-accent">{mode.estimatedTime}</p>
+                  {mode.warning && <p className="text-xs text-destructive mt-0.5">⚠ Large files</p>}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div
         ref={dropZoneRef}
         onDrop={handleFileDrop}
@@ -118,10 +166,6 @@ function ImportStep2({ onFile, loading }) {
         onChange={handleFileSelect}
         className="hidden"
       />
-      <div className="text-xs text-muted-foreground space-y-1">
-        <p>✓ Accepts: export.zip or export.xml from Apple Health</p>
-        <p>✓ File size is automatically compressed during import</p>
-      </div>
     </div>
   );
 }
@@ -180,7 +224,6 @@ function ImportStep4({ result, onReset }) {
   if (!result) return null;
 
   const { saved, errors, counters, dateRange } = result;
-  const totalFound = Object.values(counters || {}).reduce((a, b) => a + b, 0);
 
   return (
     <div className="space-y-4">
@@ -254,6 +297,7 @@ export default function AppleHealthImport({ onImported }) {
   const [message, setMessage] = useState('');
   const [counters, setCounters] = useState(null);
   const [result, setResult] = useState(null);
+  const [selectedMode, setSelectedMode] = useState('smart');
 
   async function handleFile(file) {
     setLoading(true);
@@ -280,12 +324,12 @@ export default function AppleHealthImport({ onImported }) {
         setMessage(`Large file detected (${sizeMB}MB) — this may take several minutes. Keep this tab open.`);
       }
 
-      // Parse file
+      // Parse file with selected import mode
       const parseResult = await parseAppleHealthXML(xmlFile, ({ percent, message: msg, counters: cnt }) => {
         setProgress(percent);
         setMessage(msg);
         setCounters(cnt);
-      });
+      }, selectedMode);
 
       setMessage('Saving to database...');
       const { saved, errors } = await saveMetricsBatch(parseResult.metrics);
@@ -337,7 +381,7 @@ export default function AppleHealthImport({ onImported }) {
   return (
     <div className="space-y-4">
       {step === 1 && <ImportStep1 onStart={() => setStep(2)} />}
-      {step === 2 && <ImportStep2 onFile={handleFile} loading={loading} />}
+      {step === 2 && <ImportStep2 onFile={handleFile} loading={loading} selectedMode={selectedMode} onModeChange={setSelectedMode} />}
       {step === 3 && <ImportStep3 progress={progress} counters={counters} message={message} />}
       {step === 4 && <ImportStep4 result={result} onReset={reset} />}
     </div>

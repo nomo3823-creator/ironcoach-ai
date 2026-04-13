@@ -1,9 +1,10 @@
 /**
  * Streaming Apple Health XML Parser — processes large files without loading entire DOM into memory
  * Uses regex-based line scanning and event-driven record extraction
+ * Supports tiered date-range filtering for smart imports
  */
 
-export async function parseAppleHealthXML(file, onProgress) {
+export async function parseAppleHealthXML(file, onProgress, importMode = 'smart') {
   const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
   const fileSize = file.size;
   
@@ -11,7 +12,31 @@ export async function parseAppleHealthXML(file, onProgress) {
     throw new Error('File exceeds 2GB. Please export data for the last 2 years only.');
   }
 
-  const metrics = {}; // date -> { date, hrv, resting_hr, sleep_hours, ... }
+  // Calculate date cutoffs based on import mode
+  const today = new Date();
+  let cutoffDates = null;
+  
+  if (importMode === 'smart') {
+    // Smart: full last 90 days, partial 2 years, skip older
+    cutoffDates = {
+      fullMetrics: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000),
+      partialMetrics: new Date(today.getTime() - 2 * 365 * 24 * 60 * 60 * 1000),
+    };
+  } else if (importMode === '90days') {
+    cutoffDates = {
+      fullMetrics: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000),
+      partialMetrics: null,
+    };
+  } else if (importMode === '2years') {
+    cutoffDates = {
+      fullMetrics: new Date(today.getTime() - 2 * 365 * 24 * 60 * 60 * 1000),
+      partialMetrics: null,
+    };
+  } else if (importMode === 'alltime') {
+    cutoffDates = null; // no filtering
+  }
+
+  const metrics = {};
   const workouts = [];
   let processed = 0;
   let recordCount = 0;
@@ -52,7 +77,6 @@ export async function parseAppleHealthXML(file, onProgress) {
         const value = extractAttr(recordXML, 'value');
         const startDate = extractAttr(recordXML, 'startDate');
         const endDate = extractAttr(recordXML, 'endDate');
-        const sourceId = extractAttr(recordXML, 'sourceName');
 
         if (!startDate) {
           skipped++;
@@ -60,9 +84,46 @@ export async function parseAppleHealthXML(file, onProgress) {
         }
 
         const dateStr = startDate.substring(0, 10);
+        const recordTime = new Date(startDate).getTime();
+        
+        // Apply date filtering based on import mode
+        if (cutoffDates) {
+          const fullMetricsTime = cutoffDates.fullMetrics.getTime();
+          
+          // Full metric types (last 90 days)
+          const fullMetricTypes = ['HeartRateVariabilitySDNN', 'SleepAnalysis', 'RestingHeartRate', 
+            'OxygenSaturation', 'WorkoutType', 'StepCount', 'ActiveEnergyBurned', 'BasalEnergyBurned'];
+          const isFullMetric = fullMetricTypes.some(t => type?.includes(t));
+          
+          // Partial metric types (last 2 years)
+          const partialMetricTypes = ['HeartRateVariabilitySDNN', 'RestingHeartRate', 'VO2Max', 'BodyMass'];
+          const isPartialMetric = partialMetricTypes.some(t => type?.includes(t));
+          
+          // Skip full metrics outside 90 days
+          if (isFullMetric && recordTime < fullMetricsTime) {
+            skipped++;
+            continue;
+          }
+          
+          // Skip partial metrics outside 2 years (if applicable)
+          if (isPartialMetric && cutoffDates.partialMetrics) {
+            const partialMetricsTime = cutoffDates.partialMetrics.getTime();
+            if (recordTime < partialMetricsTime) {
+              skipped++;
+              continue;
+            }
+          }
+          
+          // For alltime or when no cutoff, skip records older than 2 years if in smart mode and not full/partial
+          if (!isFullMetric && !isPartialMetric && cutoffDates.partialMetrics && recordTime < cutoffDates.partialMetrics.getTime()) {
+            skipped++;
+            continue;
+          }
+        }
+
         if (!metrics[dateStr]) metrics[dateStr] = { date: dateStr };
 
-        // HRV (Heart Rate Variability)
+        // HRV
         if (type?.includes('HeartRateVariabilitySDNN')) {
           const hrmVal = parseFloat(value);
           if (!isNaN(hrmVal)) {
@@ -80,7 +141,7 @@ export async function parseAppleHealthXML(file, onProgress) {
           }
         }
 
-        // Heart Rate (general — for daily min/max/avg)
+        // Heart Rate
         if (type?.includes('HeartRate') && !type?.includes('Variability') && !type?.includes('Resting')) {
           const hrVal = Math.round(parseFloat(value));
           if (!isNaN(hrVal)) {
@@ -159,7 +220,7 @@ export async function parseAppleHealthXML(file, onProgress) {
 
         // Walking/Running Distance
         if (type?.includes('DistanceWalkingRunning')) {
-          const dist = parseFloat(value) / 1000; // meters to km
+          const dist = parseFloat(value) / 1000;
           if (!isNaN(dist)) {
             metrics[dateStr].walking_running_distance_km = (metrics[dateStr].walking_running_distance_km || 0) + dist;
             counters.distance_records++;
@@ -219,7 +280,7 @@ export async function parseAppleHealthXML(file, onProgress) {
         const dateStr = startDate.substring(0, 10);
         if (!metrics[dateStr]) metrics[dateStr] = { date: dateStr };
         
-        // (repeat all metric extraction for final buffer — same logic as above)
+        // (same logic as above)
       } catch (err) {
         skipped++;
       }
@@ -228,7 +289,7 @@ export async function parseAppleHealthXML(file, onProgress) {
 
   onProgress?.({ percent: 100, message: 'Finalizing...', counters });
 
-  // Aggregate data (avg HRV, sleep hours, spo2, etc.)
+  // Aggregate data
   const finalMetrics = {};
   for (const [date, m] of Object.entries(metrics)) {
     const final = { date };
@@ -247,7 +308,6 @@ export async function parseAppleHealthXML(file, onProgress) {
       final.sleep_rem_minutes = Math.round(m.sleep_raw.rem * 60);
       final.sleep_awake_minutes = Math.round(m.sleep_raw.awake * 60);
       
-      // Quality mapping
       const deepRem = m.sleep_raw.deep + m.sleep_raw.rem;
       if (final.sleep_hours >= 8 && deepRem >= 1.5) {
         final.sleep_quality = 'excellent';
