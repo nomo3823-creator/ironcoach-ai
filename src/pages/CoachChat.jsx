@@ -289,8 +289,11 @@ export default function CoachChat() {
         setActive(null);
         setMessages([]);
       }
+      // Reload conversations to sync with backend
+      await loadConvs();
       toast.success("Chat deleted");
-    } catch {
+    } catch (err) {
+      console.error("Delete failed:", err);
       toast.error("Could not delete chat");
     }
   }
