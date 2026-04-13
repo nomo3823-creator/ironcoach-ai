@@ -49,7 +49,12 @@ export default function Analytics() {
     </div>
   );
 
-  const readiness = calculateReadiness(metrics, activities);
+  // Readiness is a 14-day signal. Use only the most recent 30 metrics so the
+  // calculation is identical to Dashboard/Recovery (both of which fetch 30
+  // rows newest-first). Using 500 rows here had the engine's HRV baseline
+  // pulling data from years ago and producing a different score.
+  const recentMetrics = [...metrics].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 30);
+  const readiness = calculateReadiness(recentMetrics, activities);
   const hasSports = {
     run: activities.some(a => a.sport === "run"),
     bike: activities.some(a => a.sport === "bike"),
