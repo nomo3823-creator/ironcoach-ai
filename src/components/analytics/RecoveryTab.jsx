@@ -15,7 +15,7 @@ export default function RecoveryTab({ metrics }) {
     const window = arr.slice(Math.max(0, i - 13), i + 1).filter(d => d.hrv);
     const avg = window.reduce((s, d) => s + d.hrv, 0) / window.length;
     return {
-      date: moment(m.date).format("MMM D"),
+      date: moment(m.date).format("ddd MMM D"),
       hrv: m.hrv,
       avg14: parseFloat(avg.toFixed(1)),
     };
@@ -23,13 +23,14 @@ export default function RecoveryTab({ metrics }) {
 
   // Resting HR
   const rhrData = last90.filter(m => m.resting_hr).map(m => ({
-    date: moment(m.date).format("MMM D"),
+    date: moment(m.date).format("ddd MMM D"),
     rhr: m.resting_hr,
   }));
 
   // Sleep
   const sleepData = last90.filter(m => m.sleep_hours && m.sleep_hours > 0 && m.sleep_hours < 24).map(m => ({
-    date: moment(m.date).format("MMM D"),
+    date: moment(m.date).format("ddd MMM D"),
+    fullDate: m.date,
     hours: parseFloat(m.sleep_hours.toFixed(1)),
     quality: m.sleep_quality || "good",
     color: SLEEP_QUALITY_COLOR[m.sleep_quality] || "#3b82f6",
@@ -37,13 +38,13 @@ export default function RecoveryTab({ metrics }) {
 
   // Body Battery
   const bbData = last90.filter(m => m.body_battery).map(m => ({
-    date: moment(m.date).format("MMM D"),
+    date: moment(m.date).format("ddd MMM D"),
     bb: m.body_battery,
   }));
 
   // Readiness history
   const readinessData = last90.filter(m => m.readiness_score).map(m => ({
-    date: moment(m.date).format("MMM D"),
+    date: moment(m.date).format("ddd MMM D"),
     score: m.readiness_score,
   }));
 
@@ -102,7 +103,7 @@ export default function RecoveryTab({ metrics }) {
               <BarChart data={sleepData}>
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(215 20% 55%)" }} interval="preserveStartEnd" />
                 <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: "hsl(215 20% 55%)" }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v, n, p) => [`${v}h (${p.payload.quality || "?"})`, "Sleep"]} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.1)" }} content={({ active, payload }) => active && payload?.[0] ? <div style={tooltipStyle}><p>{payload[0].payload.date}</p><p className="font-semibold">{payload[0].value}h ({payload[0].payload.quality})</p></div> : null} />
                 <ReferenceLine y={7.5} stroke="#22c55e" strokeDasharray="3 3" />
                 <Bar dataKey="hours" radius={[3, 3, 0, 0]}>
                   {sleepData.map((d, i) => (
