@@ -52,10 +52,33 @@ export default function Analytics() {
 
   // Readiness is a 14-day signal. Use only the most recent 30 metrics so the
   // calculation is identical to Dashboard/Recovery (both of which fetch 30
-  // rows newest-first). Using 500 rows here had the engine's HRV baseline
-  // pulling data from years ago and producing a different score.
+  // rows newest-first).
   const recentMetrics = [...metrics].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 30);
   const readiness = calculateReadiness(recentMetrics, activities);
+
+  // TEMP DIAGNOSTIC — remove once Analytics readiness matches Dashboard.
+  // Open DevTools Console to see why Analytics disagrees with Dashboard.
+  if (typeof window !== 'undefined') {
+    const hrvCount = recentMetrics.filter(m => m?.hrv > 0).length;
+    const sleepCount = recentMetrics.filter(m => m?.sleep_hours > 0).length;
+    // eslint-disable-next-line no-console
+    console.log('[Analytics readiness debug]', {
+      metricsFetched: metrics.length,
+      recentMetricsUsed: recentMetrics.length,
+      rowsWithHrv: hrvCount,
+      rowsWithSleep: sleepCount,
+      newestDate: recentMetrics[0]?.date,
+      newestHrv: recentMetrics[0]?.hrv,
+      score: readiness?.score,
+      label: readiness?.label,
+      hasData: readiness?.hasData,
+      hrvPts: readiness?.breakdown?.hrv,
+      hrvBaseline: readiness?.breakdown?.hrv_baseline,
+      hrvToday: readiness?.breakdown?.hrv_today,
+      tsbPts: readiness?.breakdown?.tsb,
+      tsbValue: readiness?.breakdown?.tsb_value,
+    });
+  }
   const hasSports = {
     run: activities.some(a => a.sport === "run"),
     bike: activities.some(a => a.sport === "bike"),
