@@ -1,0 +1,88 @@
+{
+  "name": "PlanRecommendation",
+  "type": "object",
+  "properties": {
+    "recommendation_type": {
+      "type": "string",
+      "title": "Recommendation Type",
+      "enum": [
+        "hrv_drop",
+        "poor_sleep",
+        "injury_flag",
+        "chat_conversation",
+        "missed_session",
+        "weekly_review",
+        "manual",
+        "health_metric"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "title": "Summary"
+    },
+    "signal_description": {
+      "type": "string",
+      "title": "Signal Description"
+    },
+    "reason": {
+      "type": "string",
+      "title": "Reason"
+    },
+    "workout_id": {
+      "type": "string",
+      "title": "Workout ID"
+    },
+    "workout_title": {
+      "type": "string",
+      "title": "Workout Title"
+    },
+    "workout_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Workout Date"
+    },
+    "original_duration_minutes": {
+      "type": "number",
+      "title": "Original Duration (min)"
+    },
+    "original_intensity": {
+      "type": "string",
+      "title": "Original Intensity"
+    },
+    "proposed_duration_minutes": {
+      "type": "number",
+      "title": "Proposed Duration (min)"
+    },
+    "proposed_intensity": {
+      "type": "string",
+      "title": "Proposed Intensity"
+    },
+    "proposed_description": {
+      "type": "string",
+      "title": "Proposed Description"
+    },
+    "proposed_changes": {
+      "type": "string",
+      "title": "Proposed Changes (JSON)"
+    },
+    "conversation_id": {
+      "type": "string",
+      "title": "Conversation ID"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "recommendation_type",
+    "summary",
+    "status"
+  ]
+}

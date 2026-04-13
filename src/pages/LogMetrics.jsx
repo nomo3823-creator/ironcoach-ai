@@ -25,23 +25,28 @@ export default function LogMetrics() {
   async function save(e) {
     e.preventDefault();
     setSaving(true);
-    const data = Object.fromEntries(
-      Object.entries(form).map(([k, v]) => {
-        if (typeof v === "boolean") return [k, v];
-        if (v === "") return [k, null];
-        if (!isNaN(v) && v !== "") return [k, Number(v)];
-        return [k, v];
-      })
-    );
-    // Upsert: update existing entry for this date if it exists
-    const existing = await base44.entities.DailyMetrics.filter({ date: form.date, created_by: currentUser.email });
-    if (existing?.[0]) {
-      await base44.entities.DailyMetrics.update(existing[0].id, data);
-    } else {
-      await base44.entities.DailyMetrics.create(data);
+    try {
+      const data = Object.fromEntries(
+        Object.entries(form).map(([k, v]) => {
+          if (typeof v === "boolean") return [k, v];
+          if (v === "") return [k, null];
+          if (!isNaN(v) && v !== "") return [k, Number(v)];
+          return [k, v];
+        })
+      );
+      // Upsert: update existing entry for this date if it exists
+      const existing = await base44.entities.DailyMetrics.filter({ date: form.date, created_by: currentUser.email });
+      if (existing?.[0]) {
+        await base44.entities.DailyMetrics.update(existing[0].id, data);
+      } else {
+        await base44.entities.DailyMetrics.create(data);
+      }
+      toast.success("Metrics logged");
+    } catch (err) {
+      toast.error("Failed to log metrics: " + err.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    toast.success("Metrics logged");
   }
 
   const f = (key, type = "number") => ({

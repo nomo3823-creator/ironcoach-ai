@@ -52,8 +52,8 @@ export default function RaceCard({ race, readiness, profile }) {
       {readiness && (
         <div className="bg-secondary/30 rounded-lg p-3 space-y-1">
           <p className="text-xs font-semibold text-foreground">Race Readiness</p>
-          <p className="text-2xl font-bold text-recovery">{Math.min(100, readiness.score + 15)}%</p>
-          <p className="text-xs text-muted-foreground">Projected based on current form</p>
+          <p className="text-2xl font-bold text-recovery">{readiness.score}%</p>
+          <p className="text-xs text-muted-foreground">Current readiness</p>
         </div>
       )}
 

@@ -201,9 +201,9 @@ export default function Today() {
         <p className="text-sm font-semibold text-foreground">This Week</p>
         <div className="flex justify-between gap-1">
           {Array.from({ length: 7 }).map((_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - d.getDay() + i);
-            const dateStr = d.toISOString().split("T")[0];
+            const weekStartDate = moment().startOf('isoWeek');
+            const d = weekStartDate.clone().add(i, 'days');
+            const dateStr = d.format('YYYY-MM-DD');
             const w = weekWorkouts.find(w => w.date === dateStr);
             const isTdy = dateStr === today;
             return (
@@ -211,8 +211,8 @@ export default function Today() {
                 key={i}
                 className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-lg text-xs ${isTdy ? "bg-primary/20 border border-primary" : "bg-secondary/30"}`}
               >
-                <p className="font-semibold">{moment(d).format("ddd").charAt(0)}</p>
-                <p>{d.getDate()}</p>
+                <p className="font-semibold">{d.format("ddd").charAt(0)}</p>
+                <p>{d.date()}</p>
                 {w ? <div className="h-2 w-2 rounded-full bg-accent" /> : <div className="h-2 w-2 rounded-full bg-secondary" />}
               </div>
             );

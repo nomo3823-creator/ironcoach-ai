@@ -59,13 +59,13 @@ async function extractXMLFromZip(zipFile) {
   }
 }
 
-async function saveMetricsBatch(metrics) {
+async function saveMetricsBatch(metrics, currentUser) {
   let saved = 0;
   const errors = [];
 
   for (const day of metrics) {
     try {
-      const existing = await base44.entities.DailyMetrics.filter({ date: day.date });
+      const existing = await base44.entities.DailyMetrics.filter({ date: day.date, created_by: currentUser.email });
       if (existing.length > 0) {
         await base44.entities.DailyMetrics.update(existing[0].id, day);
       } else {
@@ -332,7 +332,7 @@ export default function AppleHealthImport({ onImported }) {
       }, selectedMode);
 
       setMessage('Saving to database...');
-      const { saved, errors } = await saveMetricsBatch(parseResult.metrics);
+      const { saved, errors } = await saveMetricsBatch(parseResult.metrics, currentUser);
 
       // Calculate date range
       const dates = parseResult.metrics.map(m => m.date).sort();

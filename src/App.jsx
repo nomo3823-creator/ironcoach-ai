@@ -13,12 +13,13 @@ import CoachChat from './pages/CoachChat';
 import Settings from './pages/Settings';
 import Today from './pages/Today';
 import RaceHub from './pages/RaceHub';
+import LogMetrics from './pages/LogMetrics';
+import Integrations from './pages/Integrations';
 import Nutrition from './pages/Nutrition';
 import Strength from './pages/Strength';
 import Recovery from './pages/Recovery';
 import Journal from './pages/Journal';
 import Onboarding from './pages/Onboarding';
-import Integrations from './pages/Integrations';
 import StravaCallback from './pages/StravaCallback';
 
 const AuthenticatedApp = () => {
@@ -72,6 +73,8 @@ const AuthenticatedApp = () => {
       <Route path="/recovery" element={<Recovery />} />
       <Route path="/journal" element={<Journal />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/log" element={<LogMetrics />} />
+      <Route path="/integrations" element={<Integrations />} />
       <Route path="*" element={<PageNotFound />} />
     </Route>
   </Routes>

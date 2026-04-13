@@ -92,6 +92,22 @@
       "type": "string",
       "title": "Strava Athlete ID"
     },
+    "last_strava_sync": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Strava Sync"
+    },
+    "current_training_phase": {
+      "type": "string",
+      "title": "Current Training Phase",
+      "enum": [
+        "base",
+        "build",
+        "peak",
+        "taper",
+        "race_week"
+      ]
+    },
     "garmin_connected": {
       "type": "boolean",
       "title": "Garmin Connected",

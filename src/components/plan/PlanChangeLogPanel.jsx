@@ -26,13 +26,14 @@ export default function PlanChangeLogPanel() {
   const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
+    if (!currentUser) return;
     async function load() {
       const data = await base44.entities.PlanChangeLog.filter({ created_by: currentUser.email }, "-created_date", 100);
       setLogs(data || []);
       setLoading(false);
     }
     load();
-  }, []);
+  }, [currentUser]);
 
   const filtered = filter === "all" ? logs : logs.filter((l) => l.change_type === filter);
 

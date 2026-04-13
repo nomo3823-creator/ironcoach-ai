@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { base44 } from "@/api/base44Client";
 import moment from "moment";
+import { toast } from "sonner";
 
 export default function DashboardHero({ profile, race, readiness }) {
   const [syncTime, setSyncTime] = useState(null);
@@ -11,6 +13,19 @@ export default function DashboardHero({ profile, race, readiness }) {
     const last = profile?.last_strava_sync ? moment(profile.last_strava_sync).fromNow() : "never";
     setSyncTime(last);
   }, [profile]);
+
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      await base44.functions.invoke("stravaSync", {});
+      setSyncTime("just now");
+      toast.success("Strava synced");
+    } catch (err) {
+      toast.error("Sync failed: " + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const getPhaseLabel = () => {
     const phaseMap = {
@@ -66,10 +81,7 @@ export default function DashboardHero({ profile, race, readiness }) {
             size="icon"
             variant="ghost"
             className="h-6 w-6"
-            onClick={() => {
-              setSyncing(true);
-              setTimeout(() => setSyncing(false), 1000);
-            }}
+            onClick={handleSync}
             disabled={syncing}
           >
             <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} />

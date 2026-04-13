@@ -81,6 +81,26 @@
     "notes": {
       "type": "string",
       "title": "Notes"
+    },
+    "morning_checkin_complete": {
+      "type": "boolean",
+      "title": "Morning Check-in Complete",
+      "default": false
+    },
+    "energy_level": {
+      "type": "number",
+      "title": "Energy Level (1-5)"
+    },
+    "legs_feeling": {
+      "type": "string",
+      "title": "Legs Feeling",
+      "enum": [
+        "Heavy",
+        "Tired",
+        "Normal",
+        "Fresh",
+        "Springy"
+      ]
     }
   },
   "required": [

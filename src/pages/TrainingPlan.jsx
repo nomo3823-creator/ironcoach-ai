@@ -34,7 +34,7 @@ export default function TrainingPlan() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (!currentUser) return; load(); }, [currentUser]);
 
   const days = useMemo(() => {
     const start = month.clone().startOf("month").startOf("isoWeek");

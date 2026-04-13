@@ -51,8 +51,8 @@ export default function Dashboard() {
   async function loadDashboardData() {
     try {
       const today = todayStr();
-      const weekStart = moment().startOf('week').format('YYYY-MM-DD');
-      const weekEnd = moment().endOf('week').format('YYYY-MM-DD');
+      const weekStart = moment().startOf('isoWeek').format('YYYY-MM-DD');
+      const weekEnd = moment().endOf('isoWeek').format('YYYY-MM-DD');
 
       const [profileData, metricsData, activitiesData, raceData, recData, journalData, weekWorkoutsData, allMetricsData] = await Promise.all([
         base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1),

@@ -101,12 +101,6 @@ export default function Settings() {
 
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
-  const integrations = [
-    { key: "strava_connected", label: "Strava", desc: "Activities, CTL/ATL/TSB, power curves", icon: Activity, color: "#fc4c02" },
-    { key: "garmin_connected", label: "Garmin Connect", desc: "Body Battery, Training Status, FIT files", icon: Watch, color: "#009ee3" },
-    { key: "apple_health_connected", label: "Apple Health", desc: "HRV, sleep, VO2 max, resting HR", icon: Bike, color: "#fa2d48" },
-  ];
-
   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       <div>

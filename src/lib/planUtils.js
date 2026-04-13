@@ -85,7 +85,8 @@ export function calculateFitnessMetrics(activities) {
  * Get TSS from an activity record, handling multiple field name conventions
  */
 export function getActivityTSS(activity) {
-  return activity?.training_stress_score || activity?.tss_calculated || activity?.tss || activity?.suffer_score ? Math.round((activity.suffer_score || 0) * 1.0) : 0;
+  if (!activity) return 0;
+  return activity.training_stress_score || activity.tss_calculated || activity.tss || activity.suffer_score || 0;
 }
 
 /**
