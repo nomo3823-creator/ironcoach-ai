@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Search, Dumbbell, Trash2, Sparkles } from "lucide-react";
 import { sportColors, sportIcons, formatDuration } from "@/lib/sportUtils";
+import { getRaceType, getRaceLabel } from "@/lib/raceTypes";
 import { cn } from "@/lib/utils";
 
 const INTENSITIES = { easy: "Easy", moderate: "Moderate", hard: "Hard", race_pace: "Race Pace", recovery: "Recovery" };
@@ -48,8 +49,15 @@ export default function WorkoutLibrary() {
 
   async function generateStarters() {
     setGenerating(true);
+    const profile = (await base44.entities.AthleteProfile.list("-created_date", 1))?.[0];
+    const raceType = profile?.race_type || "custom";
+    const raceInfo = getRaceType(raceType);
+    const sportsList = raceInfo.sports.join(", ");
+    const perSport = Math.max(3, Math.ceil(12 / raceInfo.sports.length));
+    const total = perSport * raceInfo.sports.length;
+
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Generate 12 varied Ironman triathlon workout templates (4 swim, 4 bike, 4 run). Include beginner to advanced. Include structure details.`,
+      prompt: `Generate ${total} varied workout templates for a ${getRaceLabel(raceType)} athlete covering these sports only: ${sportsList}. Produce roughly ${perSport} per sport. Include beginner to advanced. Include structure details.`,
       response_json_schema: {
         type: "object",
         properties: {

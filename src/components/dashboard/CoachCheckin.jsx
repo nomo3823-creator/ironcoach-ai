@@ -38,7 +38,7 @@ export default function CoachCheckin({ profile, metrics, workout }) {
     const prompt = `You are IronCoach AI. Write a personalized morning check-in for this athlete. Be direct, reference specific numbers, never be generic. Max 4 sentences.
 
 Athlete: ${profile?.first_name || profile?.full_name || "Athlete"}
-Motivation: "${profile?.motivation_statement || "completing their Ironman"}"
+Motivation: "${profile?.motivation_statement || "reaching their race goal"}"
 Today's HRV: ${metrics?.hrv || "?"}ms | Resting HR: ${metrics?.resting_hr || "?"}bpm
 Sleep: ${metrics?.sleep_hours || "?"}h (${metrics?.sleep_quality || "?"}) | Body Battery: ${metrics?.body_battery || "?"}/100
 Readiness: ${metrics?.readiness_score || "?"}/100 | TSB: ${metrics?.tsb || "?"}

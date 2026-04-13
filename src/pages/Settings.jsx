@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Save, Plug, PlugZap, Watch, Activity, Bike, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { RACE_TYPES } from "@/lib/raceTypes";
 
 export default function Settings() {
   const [profile, setProfile] = useState(null);
@@ -17,7 +18,7 @@ export default function Settings() {
     first_name: "", age: "", weight_kg: "", height_cm: "", sport_history: "",
     current_ftp: "", css_per_100m: "", threshold_run_pace: "",
     vo2_max: "", resting_hr: "", max_hr: "", weekly_hours_available: "",
-    experience_level: "intermediate",
+    experience_level: "intermediate", race_type: "140.6", biggest_limiter: "",
     notification_daily_brief: true, notification_workout_reminder: true, daily_brief_time: "06:00",
     strava_connected: false, garmin_connected: false, apple_health_connected: false,
   });
@@ -132,6 +133,18 @@ export default function Settings() {
               </Select>
             </div>
             <div><Label>Weekly Hours Available</Label><Input type="number" value={form.weekly_hours_available || ""} onChange={(e) => setForm({...form,weekly_hours_available:e.target.value})} placeholder="10" /></div>
+            <div>
+              <Label>Target Race Type</Label>
+              <Select value={form.race_type || "140.6"} onValueChange={(v) => setForm({...form,race_type:v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RACE_TYPES.map((rt) => (
+                    <SelectItem key={rt.value} value={rt.value}>{rt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3"><Label>Biggest Limiter</Label><Input value={form.biggest_limiter || ""} onChange={(e) => setForm({...form,biggest_limiter:e.target.value})} placeholder="e.g. swim technique, running durability, bike FTP" /></div>
           </div>
         </section>
 

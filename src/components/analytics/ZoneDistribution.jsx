@@ -70,7 +70,7 @@ export default function ZoneDistribution() {
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-4">💡 Polarized training: ~80% easy aerobic (Z1-Z2) + ~20% high intensity (Z3-Z5) for optimal Ironman adaptation.</p>
+        <p className="text-xs text-muted-foreground mt-4">💡 Polarized training: ~80% easy aerobic (Z1-Z2) + ~20% high intensity (Z3-Z5) for optimal endurance adaptation.</p>
       </div>
     </div>
   );

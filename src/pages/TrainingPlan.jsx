@@ -58,7 +58,7 @@ export default function TrainingPlan() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Training Plan</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Periodized Ironman calendar</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Periodized training calendar</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowGenerate(true)}>

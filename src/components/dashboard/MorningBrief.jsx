@@ -2,6 +2,7 @@ import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { ChevronDown, ChevronUp, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getRaceLabel } from "@/lib/raceTypes";
 import ReactMarkdown from "react-markdown";
 
 export default function MorningBrief({ metrics, workout, profile }) {
@@ -12,9 +13,10 @@ export default function MorningBrief({ metrics, workout, profile }) {
   async function generate() {
     setLoading(true);
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are IronCoach AI, an elite Ironman triathlon coach. Write a personalized morning brief in 3-4 sentences.
+      prompt: `You are IronCoach AI, an elite endurance coach${profile?.race_type ? ` specializing in ${getRaceLabel(profile.race_type)} athletes` : ""}. Write a personalized morning brief in 3-4 sentences.
 
 Athlete: ${profile?.first_name || profile?.full_name || "Athlete"} | FTP: ${profile?.current_ftp || "?"}W | VO2max: ${profile?.vo2_max || "?"}
+Target race: ${profile?.race_type ? getRaceLabel(profile.race_type) : "endurance event"}
 Today's HRV: ${metrics?.hrv || "?"}ms | Resting HR: ${metrics?.resting_hr || "?"}bpm
 Sleep: ${metrics?.sleep_hours || "?"}h (${metrics?.sleep_quality || "?"} quality) | Body Battery: ${metrics?.body_battery || "?"}/100
 Readiness: ${metrics?.readiness_score || "?"}/100 | Mood: ${metrics?.mood || "?"}
