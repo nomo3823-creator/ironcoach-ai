@@ -170,6 +170,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [phase, setPhase] = useState("interview"); // interview | confirming | generating | done
+  const [extraInfo, setExtraInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [genProgress, setGenProgress] = useState("");
   const scrollRef = useRef(null);
@@ -234,8 +235,9 @@ export default function Onboarding() {
 
     try {
     // ── Extract structured data from answers ──
+    const allAnswers = extraInfo ? { ...answers, extra_info: extraInfo } : answers;
     const extracted = await base44.integrations.Core.InvokeLLM({
-      prompt: `Extract structured athlete data from these onboarding answers:\n${JSON.stringify(answers, null, 2)}\n\nReturn the JSON object. For race_type, pick the best match from: sprint_tri, olympic_tri, 70.3, 140.6, 5k, 10k, half_marathon, marathon, ultramarathon, gran_fondo, century_ride, open_water, custom. For target_race_date, return YYYY-MM-DD format. For experience_level: beginner, intermediate, advanced, or elite.`,
+      prompt: `Extract structured athlete data from these onboarding answers:\n${JSON.stringify(allAnswers, null, 2)}\n\nReturn the JSON object. For race_type, pick the best match from: sprint_tri, olympic_tri, 70.3, 140.6, 5k, 10k, half_marathon, marathon, ultramarathon, gran_fondo, century_ride, open_water, custom. For target_race_date, return YYYY-MM-DD format. For experience_level: beginner, intermediate, advanced, or elite.`,
       response_json_schema: {
         type: "object",
         properties: {
@@ -273,7 +275,7 @@ export default function Onboarding() {
       experience_level:        extracted.experience_level || "intermediate",
       race_type:               extracted.race_type || "custom",
       onboarding_complete:     true,
-      onboarding_raw_answers:  JSON.stringify(answers),
+      onboarding_raw_answers:  JSON.stringify({ ...answers, extra_info: extraInfo || undefined }),
     };
 
     let savedProfile;
@@ -428,7 +430,18 @@ export default function Onboarding() {
         {/* Input area */}
         <div className="pt-4 border-t border-border shrink-0">
           {phase === "confirming" && !loading && (
-            <div className="flex gap-3 mb-3">
+            <div className="space-y-3 mb-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Anything else you want me to know before I build your plan?</label>
+                <textarea
+                  value={extraInfo}
+                  onChange={e => setExtraInfo(e.target.value)}
+                  placeholder="e.g. I have a holiday in week 6, I prefer not to train on Sundays, I've been dealing with mild knee soreness…"
+                  rows={3}
+                  className="w-full rounded-xl border border-border bg-secondary/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="flex gap-3">
               <Button
                 onClick={handleConfirm}
                 className="flex-1"
@@ -443,6 +456,7 @@ export default function Onboarding() {
               }}>
                 Start over
               </Button>
+              </div>
             </div>
           )}
           {phase === "done" && (
