@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import moment from "moment";
 
 export default function StravaActivityFeed({ activities }) {
@@ -53,7 +54,9 @@ export default function StravaActivityFeed({ activities }) {
         <p>Strava: {totalMonth} activities this month</p>
       </div>
 
-      <Button variant="outline" className="w-full text-xs">View all activities</Button>
+      <Link to="/analytics">
+        <Button variant="outline" className="w-full text-xs">View all activities</Button>
+      </Link>
     </div>
   );
 }

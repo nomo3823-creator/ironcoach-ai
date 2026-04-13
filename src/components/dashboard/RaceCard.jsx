@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 import moment from "moment";
 
 export default function RaceCard({ race, readiness, profile }) {
@@ -55,7 +56,9 @@ export default function RaceCard({ race, readiness, profile }) {
         </div>
       )}
 
-      <Button className="w-full">View race plan</Button>
+      <Link to="/race" className="w-full">
+        <Button className="w-full">View race plan</Button>
+      </Link>
     </div>
   );
 }
