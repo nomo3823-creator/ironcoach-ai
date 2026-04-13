@@ -194,19 +194,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Failed to fetch activities', details: stravaActivities }, { status: 400 });
     }
 
-    const existing = await base44.asServiceRole.entities.Activity.filter({ created_by: user.email });
+    // Use user-scoped entity calls so created_by is set to the user's email
+    const existing = await base44.entities.Activity.filter({ source: 'strava' });
     const existingIds = new Set(existing.map(a => a.external_id).filter(Boolean));
 
     const toCreate = stravaActivities
       .filter(a => !existingIds.has(String(a.id)))
-      .map(a => ({ ...mapStravaActivity(a, ftp), created_by: user.email }));
+      .map(a => mapStravaActivity(a, ftp));
 
     let created = 0;
     if (toCreate.length > 0) {
-      // Bulk create in chunks of 25 to avoid payload limits
       for (let i = 0; i < toCreate.length; i += 25) {
         const chunk = toCreate.slice(i, i + 25);
-        await base44.asServiceRole.entities.Activity.bulkCreate(chunk);
+        await base44.entities.Activity.bulkCreate(chunk);
         created += chunk.length;
       }
     }
