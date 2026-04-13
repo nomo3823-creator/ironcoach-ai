@@ -17,7 +17,7 @@ import LogMetrics from './pages/LogMetrics';
 import Onboarding from './pages/Onboarding';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -37,6 +37,17 @@ const AuthenticatedApp = () => {
       navigateToLogin();
       return null;
     }
+  }
+
+  // Hard auth gate: no authenticated user means no access. Kick to the
+  // Base44 login/signup flow rather than silently rendering the app.
+  if (!isAuthenticated) {
+    navigateToLogin();
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   // Render the main app
