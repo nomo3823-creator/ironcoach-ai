@@ -276,7 +276,14 @@ export default function AppleHealthImport({ onImported }) {
     setStep(3);
     await importCtx.startImport(file, selectedMode);
     
-    // Update profile and signal global refresh
+    // Wait for status to be set, then update profile and signal global refresh
+    const maxWait = 30; // 3 seconds with 100ms checks
+    let checks = 0;
+    while (importCtx.status !== 'done' && checks < maxWait) {
+      await new Promise(r => setTimeout(r, 100));
+      checks++;
+    }
+    
     if (importCtx.status === 'done') {
       try {
         const profiles = await base44.entities.AthleteProfile.filter(
@@ -296,7 +303,10 @@ export default function AppleHealthImport({ onImported }) {
         toast.success('Import complete — pages refreshing');
       } catch (err) {
         console.error('Failed to update profile:', err);
+        markImportDone(); // Mark done even if profile update failed
       }
+    } else {
+      console.warn('Import did not complete, status:', importCtx.status);
     }
     
     onImported?.();
