@@ -135,13 +135,19 @@ export default function ReadinessBreakdown({ readiness }) {
   }
 
   // 7. TSB / Form
-  signals.push({
-    name: "Form (TSB)",
-    earned: readiness.breakdown.tsb_pts,
-    max: 20,
-    tooltip: "out of 20",
-    explanation: `TSB ${readiness.breakdown.tsb_value} — ${readiness.breakdown.tsb_interpretation || "training load normal"}`,
-  });
+  {
+    const tsbVal = readiness.breakdown.tsb_value;
+    const tsbText = typeof tsbVal === "number"
+      ? `TSB ${Math.round(tsbVal * 10) / 10} — ${readiness.breakdown.tsb_interpretation || "training load normal"}`
+      : "Not enough recent activity data for a TSB signal";
+    signals.push({
+      name: "Form (TSB)",
+      earned: readiness.breakdown.tsb ?? 0,
+      max: 20,
+      tooltip: "out of 20",
+      explanation: tsbText,
+    });
+  }
 
   // 8. Consecutive rest days
   const dayLabel =
@@ -152,25 +158,21 @@ export default function ReadinessBreakdown({ readiness }) {
         : "high";
   signals.push({
     name: "Training Streak",
-    earned: readiness.breakdown.rest_days_pts,
+    earned: readiness.breakdown.rest_days ?? 0,
     max: 15,
     tooltip: "out of 15",
-    explanation: `${readiness.breakdown.consecutive_days} day(s) in a row — ${dayLabel}`,
+    explanation: `${readiness.breakdown.consecutive_days ?? 0} day(s) in a row — ${dayLabel}`,
   });
 
   // 9. Yesterday's TSS
-  const tssLabel =
-    readiness.breakdown.yesterday_tss_value < 50
-      ? "recovered"
-      : readiness.breakdown.yesterday_tss_value <= 120
-        ? "moderate"
-        : "heavy";
+  const yTSS = readiness.breakdown.yesterday_tss_value ?? 0;
+  const tssLabel = yTSS < 50 ? "recovered" : yTSS <= 120 ? "moderate" : "heavy";
   signals.push({
     name: "Yesterday's Load",
-    earned: readiness.breakdown.yesterday_tss_pts,
+    earned: readiness.breakdown.yesterday_tss ?? 0,
     max: 15,
     tooltip: "out of 15",
-    explanation: `Yesterday: ${readiness.breakdown.yesterday_tss_value} TSS — ${tssLabel}`,
+    explanation: `Yesterday: ${yTSS} TSS — ${tssLabel}`,
   });
 
   const bandDescriptions = {

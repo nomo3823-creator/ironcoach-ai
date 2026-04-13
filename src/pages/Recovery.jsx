@@ -245,7 +245,7 @@ export default function Recovery() {
           <Card className="p-4 space-y-1">
             <p className="text-xs text-muted-foreground">Readiness</p>
             <p className="text-2xl font-bold text-foreground">
-              {todayMetrics?.readiness_score && todayMetrics.readiness_score > 0 ? `${todayMetrics.readiness_score}/100` : '—'}
+              {readiness?.score > 0 ? `${readiness.score}/100` : '—'}
             </p>
           </Card>
         </div>

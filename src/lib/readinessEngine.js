@@ -2,6 +2,7 @@
  * Readiness Engine — calculates a composite 0-100 readiness score
  * from DailyMetrics and recent Activities, with Apple Health integration.
  */
+import { calculateFitnessMetrics } from "@/lib/planUtils";
 
 export const READINESS_BANDS = [
   { min: 85, max: 100, label: "Excellent", color: "#14b8a6", description: "Body primed for peak effort. Execute hard sessions as planned." },
@@ -117,8 +118,15 @@ export function calculateReadiness(metrics = [], activities = []) {
 
   // ── TRAINING LOAD SIGNALS (50pts) ─────────────────────────────────────────
 
-  // TSB (20 pts) — research-based thresholds (Mujika & Padilla 2003, Coggan PMC)
-  const tsb = today?.tsb ?? null;
+  // TSB (20 pts) — research-based thresholds (Mujika & Padilla 2003, Coggan PMC).
+  // Prefer today's stored TSB if set; otherwise compute from the activities
+  // array (the DailyMetrics ctl/atl/tsb columns are almost always null after
+  // an Apple Health-only import).
+  let tsb = today?.tsb ?? null;
+  if (tsb === null && activities?.length > 0) {
+    const fitness = calculateFitnessMetrics(activities);
+    if (fitness && typeof fitness.tsb === "number") tsb = fitness.tsb;
+  }
   if (tsb !== null) {
     // Optimal racing: -10 to +5 TSB
     breakdown.tsb = tsb >= -10 && tsb <= 5 ? 20    // optimal performance zone
