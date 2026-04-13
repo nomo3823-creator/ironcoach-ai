@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { calculateZones, getSessionIntensityModifier } from "@/lib/trainingZones";
 import {
   Send, Loader2, Zap, Plus, MessageSquare,
   CheckCircle2, XCircle, AlertTriangle, Trash2,
@@ -36,7 +37,7 @@ async function loadAthleteContext(userEmail) {
   };
 }
 
-function buildSystemPrompt(profile, nextRace, next14Days) {
+function buildSystemPrompt(profile, nextRace, next14Days, zones, readiness, todayMetrics, recentMetrics, recentActivities) {
   let rawAnswers = "";
   if (profile?.onboarding_raw_answers) {
     try {
@@ -48,36 +49,77 @@ function buildSystemPrompt(profile, nextRace, next14Days) {
   const next14Str = next14Days?.length
     ? next14Days.slice(0, 14).map(w => `  ${w.date}: [${w.sport}] ${w.title} (${w.duration_minutes}min, ${w.intensity})`).join("\n")
     : "  No sessions scheduled yet.";
+  
+  const hrv14Day = recentMetrics && recentMetrics.length > 0
+    ? recentMetrics.slice(0, 14).filter(m => m.hrv).reduce((s, m, _, a) => s + (m.hrv || 0) / a.length, 0)
+    : todayMetrics?.hrv || 50;
+  const hrvRatio = todayMetrics?.hrv && hrv14Day ? Math.round((todayMetrics.hrv / hrv14Day - 1) * 100) : 0;
+  const rhrBaseline = recentMetrics && recentMetrics.length > 0
+    ? recentMetrics.slice(0, 14).filter(m => m.resting_hr).reduce((s, m, _, a) => s + (m.resting_hr || 0) / a.length, 0)
+    : todayMetrics?.resting_hr || 60;
+  const last7TSS = recentActivities && recentActivities.length > 0
+    ? recentActivities.slice(0, 7).reduce((s, a) => s + (a.training_stress_score || a.tss || 0), 0)
+    : 0;
 
-  return `You are this athlete's personal endurance coach. You know everything about them. Never ask for info you already have. Never give generic advice. Always be specific to their data.
+  return `You are an elite endurance coach like Dan Plews, Joe Friel, and Matt Dixon. You are direct, specific, and data-driven. You never give generic advice.
+
+CORE COACHING RULES:
+1. Every workout recommendation must include specific targets: duration, heart rate zone range, power targets (cycling), pace targets (running/swimming)
+2. Always show interval structure: Warm-up → Main Set (with each interval) → Cool-down
+3. Always explain WHY this session based on today's readiness, HRV, TSB, and training load
+4. Reference the athlete's actual numbers, not generic ranges
+5. Follow 80/20 polarized intensity: ~80% Zone 1-2, ~20% Zone 3-5
 
 ATHLETE PROFILE:
 Name: ${profile?.first_name || "Athlete"}
+Weight: ${profile?.weight_kg || "?"} kg
 FTP: ${profile?.current_ftp ? profile.current_ftp + "W" : "unknown"} | Run threshold: ${profile?.threshold_run_pace || "unknown"}/km | CSS: ${profile?.css_per_100m ? profile.css_per_100m + "s/100m" : "unknown"}
-Experience: ${profile?.experience_level || "unknown"} | Weekly hours: ${profile?.weekly_hours_available || "unknown"}h
-Biggest limiter: ${profile?.biggest_limiter || "unknown"}
-Injury history: ${profile?.injury_history || "none reported"}
-Motivation: "${profile?.motivation_statement || "not provided"}"
-${nextRace ? `Target race: ${nextRace.name} on ${nextRace.date} (${getRaceLabel(nextRace.race_type || nextRace.distance)})` : "No target race set."}
-Current training phase: ${phaseLabels[currentPhase] || "Base"}
+Max HR: ${profile?.max_hr || "?"} | Resting HR: ${profile?.resting_hr || "?"}
+Experience: ${profile?.experience_level || "unknown"} | Limiter: ${profile?.biggest_limiter || "unknown"}
+Weekly hours: ${profile?.weekly_hours_available || "?"}
 
-COACHING NOTES FROM PREVIOUS SESSIONS:
-${profile?.extracted_insights || "No notes yet — this is early in your work together."}
+CALCULATED TRAINING ZONES:
+${zones?.bike ? `CYCLING POWER:
+- Z1 (Recovery): 0-${zones.bike.z1.max}W
+- Z2 (Endurance): ${zones.bike.z2.min}-${zones.bike.z2.max}W
+- Z3 (Tempo): ${zones.bike.z3.min}-${zones.bike.z3.max}W
+- Z4 (Threshold): ${zones.bike.z4.min}-${zones.bike.z4.max}W
+- Z5 (VO2 Max): ${zones.bike.z5.min}-${zones.bike.z5.max}W\n` : ""}${zones?.run ? `RUNNING PACE:
+- Z1 (Recovery): ${zones.run.z1.pace}
+- Z2 (Endurance): ${zones.run.z2.pace}
+- Z3 (Tempo): ${zones.run.z3.pace}
+- Z4 (Threshold): ${zones.run.z4.pace}
+- Z5 (VO2 Max): ${zones.run.z5.pace}\n` : ""}${zones?.swim ? `SWIM PACE:
+- Z1 (Recovery): ${zones.swim.z1.pace}
+- Z2 (Endurance): ${zones.swim.z2.pace}
+- Z3 (Tempo): ${zones.swim.z3.pace}
+- Z4 (CSS): ${zones.swim.z4.pace}\n` : ""}${zones?.hrZones ? `HEART RATE ZONES:
+- Z1 (Recovery): <${zones.hrZones.z1.max}bpm
+- Z2 (Endurance): ${zones.hrZones.z2.min}-${zones.hrZones.z2.max}bpm
+- Z3 (Tempo): ${zones.hrZones.z3.min}-${zones.hrZones.z3.max}bpm
+- Z4 (Threshold): ${zones.hrZones.z4.min}-${zones.hrZones.z4.max}bpm
+- Z5 (VO2 Max): ${zones.hrZones.z5.min}bpm+\n` : ""}
+TODAY'S DATA:
+Readiness: ${todayMetrics?.readiness_score || "?"}/100
+HRV: ${todayMetrics?.hrv || "?"} ms (14-day avg: ${Math.round(hrv14Day)} ms, ratio: ${hrvRatio >= 0 ? "+" : ""}${hrvRatio}%)
+Resting HR: ${todayMetrics?.resting_hr || "?"} bpm (baseline: ${Math.round(rhrBaseline)} bpm)
+Sleep: ${todayMetrics?.sleep_hours || "?"} h (${todayMetrics?.sleep_quality || "?"})
+Body Battery: ${todayMetrics?.body_battery || "?"}/100
+TSB (Form): ${todayMetrics?.tsb || "?"}
+Last 7-day TSS: ${last7TSS}
 
-ORIGINAL ONBOARDING Q&A:
-${rawAnswers || "Not available."}
+COACHING INSIGHTS:
+${profile?.extracted_insights || "No previous notes yet."}
 
-ATHLETE'S NEXT 14 DAYS:
+NEXT 14 DAYS:
 ${next14Str}
 
-YOUR COMMUNICATION RULES — NEVER BREAK THESE:
-1. 2–4 sentences max by default. More only if the athlete explicitly asks for detail.
+COMMUNICATION RULES:
+1. 2–4 sentences max by default. More only if explicitly asked for detail.
 2. No bullet points unless specifically requested.
-3. Zero filler: no "Great question!", "Absolutely!", "Of course!", "Happy to help!", "That's a great point!"
-4. Never repeat back what the athlete just said.
-5. Talk like a coach texting their athlete — direct, warm, real.
-6. Always reference their actual numbers when giving advice (FTP, HRV, pace, TSB, etc.).
-7. Say problems plainly. Don't soften bad news with fluff.`;
+3. Zero filler — direct, warm, real language.
+4. Reference actual numbers (FTP, HRV, pace, TSB) when giving advice.
+5. Say problems plainly. When giving workout prescriptions, include exact targets.`;
 }
 
 function buildContextString(profile, metrics, workout, races, next14Days) {
@@ -289,7 +331,10 @@ export default function CoachChat() {
     // Inject silent system prompt so coach always has full athlete context
     const today      = moment().format("YYYY-MM-DD");
     const nextRace   = ctx.races.filter(r => r.date >= today).sort((a,b) => a.date.localeCompare(b.date))[0];
-    const systemPrompt = buildSystemPrompt(ctx.profile, nextRace, ctx.next14Days);
+    const zones = calculateZones(ctx.profile);
+    const allMetrics = await base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 30);
+    const allActivities = await base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 30);
+    const systemPrompt = buildSystemPrompt(ctx.profile, nextRace, ctx.next14Days, zones, ctx.metrics?.readiness_score, ctx.metrics, allMetrics, allActivities);
     try {
       await base44.agents.addMessage(c, { role: "system", content: systemPrompt });
     } catch {}
@@ -360,11 +405,32 @@ export default function CoachChat() {
     // Always load fresh context so every message has current data
     const ctx = await loadAthleteContext(currentUser.email);
     setAthleteCtx(ctx);
+    
+    // Load full history for insight extraction
+    const allMetrics = await base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 30);
+    const allActivities = await base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 30);
+    
     const contextStr = buildContextString(ctx.profile, ctx.metrics, ctx.workout, ctx.races, ctx.next14Days);
+    
+    // Check if user is asking for workout prescription
+    const prescriptionKeywords = ["today's workout", "break down", "my session", "what should i do", "training targets", "pace targets", "power targets", "heart rate zones", "interval structure", "give me my session"];
+    const isPrescriptionRequest = prescriptionKeywords.some(kw => msg.toLowerCase().includes(kw));
+    let prescriptionNote = "";
+    if (isPrescriptionRequest && ctx.workout) {
+      prescriptionNote = "\n\n[COACH INSTRUCTION: The athlete is asking for a full workout prescription. Respond with the complete structured session breakdown including: warm-up duration and targets, every main set interval with exact duration/distance and exact power/pace/HR targets from their calculated zones, rest periods, cool-down, and why each block is at that intensity. Use their actual zones from the context. Format each block clearly on a new line.]";
+    }
 
+    const zones = calculateZones(ctx.profile);
+    const systemPrompt = buildSystemPrompt(ctx.profile, ctx.races?.filter(r => r.date >= ctx.today)?.[0], ctx.next14Days, zones, ctx.metrics?.readiness_score, ctx.metrics, allMetrics, allActivities);
+    
+    await base44.agents.addMessage(conv, {
+      role:    "system",
+      content: systemPrompt,
+    });
+    
     await base44.agents.addMessage(conv, {
       role:    "user",
-      content: `${contextStr}\n\nAthlete: ${msg}`,
+      content: `${contextStr}${prescriptionNote}\n\nAthlete: ${msg}`,
     });
 
     // Generate a summarized title for the conversation if it's new
