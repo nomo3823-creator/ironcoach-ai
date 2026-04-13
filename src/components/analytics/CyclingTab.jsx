@@ -1,7 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from "recharts";
 import { PieChart, Pie, Legend } from "recharts";
 import moment from "moment";
-import DailyRecommendationWidget from "./DailyRecommendationWidget";
 
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
 
@@ -60,16 +59,12 @@ export default function CyclingTab({ activities, metrics, profile }) {
 
   if (rides.length === 0) {
     return (
-      <div className="space-y-4">
-        <DailyRecommendationWidget sport="bike" activities={activities} metrics={metrics} />
-        <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground text-sm">No cycling data synced yet.</div>
-      </div>
+      <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground text-sm">No cycling data synced yet.</div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <DailyRecommendationWidget sport="bike" activities={activities} metrics={metrics} />
 
       {/* NP trend */}
       {npTrend.length > 2 && (

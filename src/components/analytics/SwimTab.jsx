@@ -1,6 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar } from "recharts";
 import moment from "moment";
-import DailyRecommendationWidget from "./DailyRecommendationWidget";
 
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
 
@@ -54,16 +53,12 @@ export default function SwimTab({ activities, metrics, profile }) {
 
   if (swims.length === 0) {
     return (
-      <div className="space-y-4">
-        <DailyRecommendationWidget sport="swim" activities={activities} metrics={metrics} />
-        <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground text-sm">No swim data synced yet.</div>
-      </div>
+      <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground text-sm">No swim data synced yet.</div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <DailyRecommendationWidget sport="swim" activities={activities} metrics={metrics} />
 
       {/* Pace trend */}
       {paceTrend.length > 2 && (
