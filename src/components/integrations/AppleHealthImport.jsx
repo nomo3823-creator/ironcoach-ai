@@ -72,59 +72,59 @@ export default function AppleHealthImport({ onImported }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  async function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLoading(true);
-    setResult(null);
-
-    (async () => {
+  function handleFile(e) {
     try {
-      const text = await file.text();
-      console.log('XML parsed, length:', text.length);
-      const parsed = parseAppleHealthXML(text);
-      console.log('Extracted metrics:', parsed.length);
+      const file = e.target.files?.[0];
+      console.log('File selected:', file?.name);
+      if (!file) return;
+      setLoading(true);
+      setResult(null);
 
-      if (parsed.length === 0) {
-        toast({ title: "No compatible data found", description: "Make sure you selected the export.xml file from Apple Health.", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
+      file.text().then(text => {
+        console.log('File read, size:', text.length);
+        const parsed = parseAppleHealthXML(text);
+        console.log('Metrics extracted:', parsed.length);
 
-      // Upsert into DailyMetrics
-      let saved = 0;
-      for (const day of parsed) {
-        try {
-          const existing = await base44.entities.DailyMetrics.filter({ date: day.date });
-          if (existing.length > 0) {
-            await base44.entities.DailyMetrics.update(existing[0].id, day);
-          } else {
-            await base44.entities.DailyMetrics.create(day);
-          }
-          saved++;
-        } catch (dayErr) {
-          console.error(`Failed to save day ${day.date}:`, dayErr.message);
-          throw dayErr;
+        if (parsed.length === 0) {
+          toast({ title: "No compatible data found", description: "Make sure you selected the export.xml file from Apple Health.", variant: "destructive" });
+          setLoading(false);
+          return;
         }
-      }
 
-      setResult({ saved });
-      toast({ title: `Imported ${saved} days of health data from Apple Health` });
-      onImported?.();
+        const promises = parsed.map(day =>
+          base44.entities.DailyMetrics.filter({ date: day.date }).then(existing => {
+            if (existing.length > 0) {
+              return base44.entities.DailyMetrics.update(existing[0].id, day);
+            } else {
+              return base44.entities.DailyMetrics.create(day);
+            }
+          })
+        );
+
+        Promise.all(promises).then(results => {
+          console.log('Saved records:', results.length);
+          setResult({ saved: results.length });
+          toast({ title: `Imported ${results.length} days of health data from Apple Health` });
+          onImported?.();
+          setLoading(false);
+          if (fileRef.current) fileRef.current.value = "";
+        }).catch(err => {
+          console.error('Save error:', err);
+          toast({ title: "Import failed", description: err.message, variant: "destructive" });
+          setLoading(false);
+          if (fileRef.current) fileRef.current.value = "";
+        });
+      }).catch(err => {
+        console.error('File read error:', err);
+        toast({ title: "Import failed", description: err.message, variant: "destructive" });
+        setLoading(false);
+        if (fileRef.current) fileRef.current.value = "";
+      });
     } catch (err) {
-      console.error('Import error:', err);
+      console.error('Sync error in handleFile:', err);
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
-    }
-
-    setLoading(false);
-    // reset input
-    if (fileRef.current) fileRef.current.value = "";
-    })().catch(err => {
-      console.error('Unhandled error in handleFile:', err);
-      toast({ title: "Import failed", description: err?.message || "Unknown error", variant: "destructive" });
       setLoading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    });
+    }
   }
 
   return (
