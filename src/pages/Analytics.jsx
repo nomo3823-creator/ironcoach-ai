@@ -23,6 +23,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!currentUser) return;
     async function load() {
       const [m, a, p] = await Promise.all([
         base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "date", 500),
@@ -35,7 +36,7 @@ export default function Analytics() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [currentUser]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">

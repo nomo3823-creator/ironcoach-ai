@@ -1,13 +1,5 @@
 import { Heart, TrendingUp, CheckCircle2, Sparkles, Timer, Calendar } from "lucide-react";
-
-const READINESS_BANDS = [
-  { min: 85, max: 100, label: "Peak", color: "#10b981" },
-  { min: 70, max: 84, label: "High", color: "#10b981" },
-  { min: 55, max: 69, label: "Moderate", color: "#f59e0b" },
-  { min: 40, max: 54, label: "Low", color: "#f97316" },
-  { min: 20, max: 39, label: "Very Low", color: "#ef4444" },
-  { min: 0, max: 19, label: "Rest", color: "#ef4444" },
-];
+import { READINESS_BANDS } from "@/lib/readinessEngine";
 
 export default function QuickStats({ stats }) {
   const readinessBand = READINESS_BANDS.find(b => stats.readinessScore != null && stats.readinessScore >= b.min && stats.readinessScore <= b.max);

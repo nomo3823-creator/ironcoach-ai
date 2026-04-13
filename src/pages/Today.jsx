@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import moment from "moment";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function Today() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [todayWorkout, setTodayWorkout] = useState(null);
   const [todayMetrics, setTodayMetrics] = useState(null);
@@ -24,10 +27,8 @@ export default function Today() {
     try {
       const today = new Date().toISOString().split("T")[0];
       const tomorrow = moment().add(1, "day").format("YYYY-MM-DD");
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
+      const weekStart = moment().startOf('isoWeek').format('YYYY-MM-DD');
+      const weekEnd = moment().endOf('isoWeek').format('YYYY-MM-DD');
 
       const [twData, tmData, tomData, recData, weekData] = await Promise.all([
         base44.entities.PlannedWorkout.filter({ date: today, created_by: currentUser.email }),
@@ -47,6 +48,7 @@ export default function Today() {
       setRecommendations(recData || []);
       setWeekWorkouts(weekData || []);
     } catch (err) {
+      toast.error("Could not load Today data");
     } finally {
       setLoading(false);
     }
@@ -62,16 +64,31 @@ export default function Today() {
         });
       }
       await base44.entities.PlanRecommendation.update(rec.id, { status: "approved" });
+      toast.success("Recommendation approved");
       await loadData();
     } catch (err) {
+      toast.error("Could not approve recommendation");
     }
   }
 
   async function handleDismissRec(rec) {
     try {
       await base44.entities.PlanRecommendation.update(rec.id, { status: "rejected" });
+      toast.success("Recommendation dismissed");
       await loadData();
     } catch (err) {
+      toast.error("Could not dismiss recommendation");
+    }
+  }
+
+  async function markComplete() {
+    if (!todayWorkout) return;
+    try {
+      await base44.entities.PlannedWorkout.update(todayWorkout.id, { status: "completed" });
+      toast.success("Session marked complete");
+      await loadData();
+    } catch (err) {
+      toast.error("Could not save");
     }
   }
 
@@ -129,8 +146,8 @@ export default function Today() {
           </div>
           {todayWorkout.structure && <p className="text-sm text-muted-foreground italic">{todayWorkout.structure}</p>}
           <div className="flex gap-3">
-            <Button className="flex-1">Mark Complete</Button>
-            <Button variant="outline" className="flex-1">
+            <Button className="flex-1" onClick={markComplete}>Mark Complete</Button>
+            <Button variant="outline" className="flex-1" onClick={() => navigate("/plan")}>
               Modify
             </Button>
           </div>
@@ -141,7 +158,7 @@ export default function Today() {
         <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
           <p className="text-xl font-bold text-foreground">Rest Day</p>
           <p className="text-sm text-muted-foreground">Recovery is training.</p>
-          <Button variant="outline">View recovery tips</Button>
+          <Button variant="outline" onClick={() => navigate("/recovery")}>View recovery tips</Button>
         </div>
       )}
 

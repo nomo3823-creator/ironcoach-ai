@@ -29,6 +29,7 @@ export default function Settings() {
   });
 
   useEffect(() => {
+    if (!currentUser) return;
     async function load() {
       const data = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
       if (data?.[0]) {
@@ -38,7 +39,7 @@ export default function Settings() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [currentUser]);
 
   async function save(e) {
     e.preventDefault();
@@ -70,7 +71,7 @@ export default function Settings() {
   }
 
   async function resetOnboarding() {
-    if (!window.confirm("Delete ALL your data and restart onboarding? This cannot be undone.")) return;
+    if (!window.confirm("Delete ALL your data (profile, workouts, metrics, activities, races, change log, recommendations) and restart onboarding. This cannot be undone.")) return;
     setResetting(true);
     try {
       const [workouts, metrics, activities, races, logs, recs] = await Promise.all([
@@ -113,36 +114,13 @@ export default function Settings() {
         <p className="text-sm text-muted-foreground mt-0.5">Athlete profile & integrations</p>
       </div>
 
-      {/* Integrations */}
+      {/* Integrations Link */}
       <section>
-        <h2 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">Device Integrations</h2>
-        <div className="space-y-3">
-          {integrations.map(({ key, label, desc, icon: Icon, color }) => (
-            <div key={key} className="rounded-xl border border-border bg-card p-4 flex items-center gap-4">
-              <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: color + "15" }}>
-                <Icon className="h-5 w-5" style={{ color }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground">{desc}</p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className={cn("text-xs font-medium", form[key] ? "text-recovery" : "text-muted-foreground")}>
-                  {form[key] ? "Connected" : "Disconnected"}
-                </span>
-                <Button
-                  size="sm"
-                  variant={form[key] ? "outline" : "default"}
-                  onClick={() => toggle(key)}
-                  className={!form[key] ? "bg-primary hover:bg-primary/90" : ""}
-                >
-                  {form[key] ? <><PlugZap className="h-3.5 w-3.5 mr-1.5 text-destructive" />Disconnect</> : <><Plug className="h-3.5 w-3.5 mr-1.5" />Connect</>}
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">* OAuth2 flows require a Builder+ plan to activate live data sync.</p>
+        <h2 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">Integrations</h2>
+        <p className="text-sm text-muted-foreground mb-4">Manage all your device connections and data integrations.</p>
+        <Button variant="outline" onClick={() => navigate("/integrations")} className="w-full sm:w-auto">
+          <Plug className="h-4 w-4 mr-2" /> Manage Integrations
+        </Button>
       </section>
 
       {/* Profile form */}

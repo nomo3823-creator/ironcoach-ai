@@ -62,6 +62,10 @@ export default function LogMetrics() {
         </div>
       </div>
 
+      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground">
+        <p><strong className="text-foreground">Pro tip:</strong> Connect Strava and Apple Health under <button onClick={() => window.location.href = "/integrations"} className="text-primary underline hover:no-underline">/integrations</button> to auto-populate these metrics.</p>
+      </div>
+
       <form onSubmit={save} className="space-y-6">
         <div>
           <Label>Date</Label>
@@ -90,14 +94,7 @@ export default function LogMetrics() {
           </div>
         </section>
 
-        <section className="space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Training Load</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div><Label>CTL (Fitness)</Label><Input {...f("ctl")} placeholder="55" /></div>
-            <div><Label>ATL (Fatigue)</Label><Input {...f("atl")} placeholder="62" /></div>
-            <div><Label>TSB (Form)</Label><Input {...f("tsb")} placeholder="-7" /></div>
-          </div>
-        </section>
+        {/* Training Load is calculated from activities — hidden from manual entry */}
 
         <section className="space-y-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wellbeing</h2>

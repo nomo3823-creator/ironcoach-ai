@@ -30,13 +30,20 @@ export default function DashboardHero({ profile, race, readiness }) {
   };
 
   const todayDate = moment().format("dddd, MMM D");
-  const firstName = profile?.user_name?.split(" ")[0] || "Athlete";
+  const firstName = profile?.first_name || "Athlete";
+  
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  };
 
   return (
     <div className="bg-gradient-to-br from-secondary/40 to-secondary/20 rounded-2xl border border-border p-6 space-y-4">
       {/* Greeting & Date */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Good morning, {firstName}.</h1>
+        <h1 className="text-3xl font-bold text-foreground">{getGreeting()}, {firstName}.</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {todayDate} · {getPhaseLabel()}
         </p>

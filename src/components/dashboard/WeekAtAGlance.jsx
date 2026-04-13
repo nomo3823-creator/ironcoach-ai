@@ -1,10 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import moment from "moment";
+import { getActivityTSS } from "@/lib/planUtils";
 
 export default function WeekAtAGlance({ activities }) {
   const today = new Date();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay());
+  const weekStart = moment().startOf('isoWeek').toDate();
 
   const week = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart);
@@ -22,7 +22,7 @@ export default function WeekAtAGlance({ activities }) {
   const weekActivities = week.filter(d => getActivityForDate(d)).length;
   const weekTSS = week.reduce((s, d) => {
     const a = getActivityForDate(d);
-    return s + (a?.training_stress_score || a?.tss || 0);
+    return s + getActivityTSS(a);
   }, 0);
 
   return (

@@ -3,8 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { sportColors } from "@/lib/sportUtils";
 import { formatDistance } from "@/lib/unitConversions";
 import moment from "moment";
+import { useNavigate } from "react-router-dom";
 
 export default function TodaySessionCard({ workout, readiness, activities }) {
+  const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
   const completedToday = activities.find(a => a.date === today);
 
@@ -45,7 +47,7 @@ export default function TodaySessionCard({ workout, readiness, activities }) {
           </div>
         )}
 
-        <Button className="w-full">View full analysis</Button>
+        <Button className="w-full" onClick={() => navigate("/analytics")}>View full analysis</Button>
       </div>
     );
   }
@@ -70,7 +72,7 @@ export default function TodaySessionCard({ workout, readiness, activities }) {
           </div>
         )}
 
-        <Button variant="outline" className="w-full">View recovery tips</Button>
+        <Button variant="outline" className="w-full" onClick={() => navigate("/recovery")}>View recovery tips</Button>
       </div>
     );
   }
@@ -106,8 +108,8 @@ export default function TodaySessionCard({ workout, readiness, activities }) {
       )}
 
       <div className="flex gap-2">
-        <Button className="flex-1">Start Session</Button>
-        <Button variant="outline" className="flex-1">Log manually</Button>
+        <Button className="flex-1" onClick={() => navigate("/plan")}>Start Session</Button>
+        <Button variant="outline" className="flex-1" onClick={() => navigate("/log")}>Log manually</Button>
       </div>
 
       <p className="text-xs text-muted-foreground text-center">Strava will auto-sync when done</p>

@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import DashboardHero from "@/components/dashboard/DashboardHero";
 import ReadinessGauge from "@/components/dashboard/ReadinessGauge";
 import TodaySessionCard from "@/components/dashboard/TodaySessionCard";
@@ -39,6 +40,8 @@ export default function Dashboard() {
   const [allMetrics, setAllMetrics] = useState([]);
   const [readiness, setReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const todayStr = () => new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     if (!currentUser || isLoadingAuth) return;
@@ -79,15 +82,14 @@ export default function Dashboard() {
       const planned = weekWorkoutsData?.find(w => w.date === today) || null;
       setPlannedWorkout(planned);
     } catch (err) {
+      toast.error("Could not load dashboard data");
     } finally {
       setLoading(false);
     }
   }
 
-  const todayStr = () => new Date().toISOString().split("T")[0];
-
-  const weekStart = moment().startOf('week').format('YYYY-MM-DD');
-  const weekEnd = moment().endOf('week').format('YYYY-MM-DD');
+  const weekStart = moment().startOf('isoWeek').format('YYYY-MM-DD');
+  const weekEnd = moment().endOf('isoWeek').format('YYYY-MM-DD');
   const weekActs = activities.filter(a => a.date >= weekStart && a.date <= weekEnd);
   const nextRace = race;
   const daysToRace = nextRace ? Math.max(0, Math.ceil((new Date(nextRace.date) - new Date()) / (1000 * 60 * 60 * 24))) : null;

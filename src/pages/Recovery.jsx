@@ -6,9 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import moment from "moment";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function Recovery() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [todayMetrics, setTodayMetrics] = useState(null);
   const [completedCheckin, setCompletedCheckin] = useState(false);
@@ -24,9 +27,7 @@ export default function Recovery() {
   async function loadData() {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const [tData] = await Promise.all([
-        base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
-      ]);
+      const tData = await base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email });
       const m = tData?.[0];
       setTodayMetrics(m || null);
       setCompletedCheckin(m?.morning_checkin_complete || false);
@@ -34,7 +35,7 @@ export default function Recovery() {
       setEnergy(m?.energy_level || 0);
       setLegsFeel(m?.legs_feeling || "");
     } catch (err) {
-      console.error("Failed to load Recovery data:", err);
+      toast.error("Failed to load Recovery data");
     } finally {
       setLoading(false);
     }
@@ -59,9 +60,11 @@ export default function Recovery() {
           morning_checkin_complete: true,
         });
       }
+      toast.success("Check-in saved successfully");
       setCompletedCheckin(true);
+      await loadData();
     } catch (err) {
-      console.error("Save check-in error:", err);
+      toast.error("Could not save check-in");
     }
   }
 
@@ -72,6 +75,9 @@ export default function Recovery() {
       </div>
     );
   }
+
+  const sleepEmojis = ["😴", "😕", "😐", "🙂", "😊"];
+  const sleepValues = ["poor", "fair", "good", "good", "excellent"];
 
   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-6">
@@ -87,12 +93,12 @@ export default function Recovery() {
           <div className="space-y-3">
             <p className="text-sm font-semibold text-foreground">How did you sleep?</p>
             <div className="flex gap-2">
-              {["😴", "😕", "😐", "🙂", "😊"].map((emoji, i) => (
+              {sleepEmojis.map((emoji, i) => (
                 <button
                   key={i}
-                  onClick={() => setSleepQuality(["poor", "fair", "ok", "good", "excellent"][i])}
+                  onClick={() => setSleepQuality(sleepValues[i])}
                   className={`flex-1 p-3 rounded-lg text-2xl transition-all ${
-                    ["poor", "fair", "ok", "good", "excellent"][i] === sleepQuality
+                    sleepValues[i] === sleepQuality
                       ? "bg-primary/20 border border-primary"
                       : "bg-secondary border border-border"
                   }`}
@@ -185,7 +191,7 @@ export default function Recovery() {
       <Card className="bg-secondary/30 p-6 space-y-3">
         <h2 className="text-lg font-semibold text-foreground">Apple Health</h2>
         <p className="text-sm text-muted-foreground">Import your health data for better insights</p>
-        <Button variant="outline">Import Apple Health Data</Button>
+        <Button variant="outline" onClick={() => navigate("/integrations")}>Import Apple Health Data</Button>
       </Card>
     </div>
   );

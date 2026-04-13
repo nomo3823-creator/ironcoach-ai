@@ -152,7 +152,7 @@ export default function Integrations() {
           <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-accent" />
           <span>Garmin doesn't offer a public API. You can manually log your HRV, sleep, and body battery on the <strong className="text-foreground">Log Metrics</strong> page — or export a CSV from Garmin Connect and we can import it in the future.</span>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => window.location.href = '/log'}>
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => window.location.href = '/recovery'}>
           <Upload className="h-3.5 w-3.5" /> Log Metrics Manually
         </Button>
       </div>

@@ -6,9 +6,9 @@ import { getRaceLabel } from "@/lib/raceTypes";
 
 export default function RaceCard({ race, readiness, profile }) {
   const daysLeft = Math.max(0, Math.ceil((new Date(race.date) - new Date()) / (1000 * 60 * 60 * 24)));
-  const totalDays = Math.ceil((new Date(race.date) - new Date(race.created_date || new Date())) / (1000 * 60 * 60 * 24));
+  const totalDays = race.created_date ? Math.max(1, Math.ceil((new Date(race.date) - new Date(race.created_date)) / (1000 * 60 * 60 * 24))) : 84;
   const daysElapsed = totalDays - daysLeft;
-  const progressPercent = (daysElapsed / totalDays) * 100;
+  const progressPercent = totalDays > 0 ? (daysElapsed / totalDays) * 100 : 0;
 
   const phases = ["Base", "Build", "Peak", "Taper", "Race"];
   const phaseDuration = totalDays / phases.length;
