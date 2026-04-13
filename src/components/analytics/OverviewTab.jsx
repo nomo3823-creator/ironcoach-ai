@@ -5,6 +5,7 @@ import { Loader2, Zap, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, BarChart, Bar, Legend } from "recharts";
 import ReactMarkdown from "react-markdown";
 import moment from "moment";
+import { calculateFitnessMetrics, getActivityTSS } from "@/lib/planUtils";
 
 function MetricCard({ label, value, unit, change, description, color }) {
   const trend = change > 0 ? "up" : change < 0 ? "down" : "flat";
@@ -37,17 +38,22 @@ export default function OverviewTab({ metrics, activities, profile }) {
   const [aiSummary, setAiSummary] = useState("");
   const [loadingAI, setLoadingAI] = useState(false);
 
-  const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1).filter(m => m.date <= todayStr);
   const latest = sorted[sorted.length - 1];
   const weekAgo = sorted[sorted.length - 8];
 
-  // 90-day fitness chart
-  const fitnessData = sorted.slice(-90).map(m => ({
-    date: moment(m.date).format("MMM D"),
-    CTL: m.ctl || null,
-    ATL: m.atl || null,
-    TSB: m.tsb || null,
-  })).filter(d => d.CTL || d.ATL || d.TSB);
+  // Calculate fitness metrics from activities (not stored DailyMetrics)
+  const fitnessCalc = calculateFitnessMetrics(activities);
+  const fitnessData = Object.entries(fitnessCalc.history || {})
+    .filter(([date]) => date <= todayStr)
+    .slice(-90)
+    .map(([date, vals]) => ({
+      date: moment(date).format("MMM D"),
+      CTL: vals.ctl,
+      ATL: vals.atl,
+      TSB: vals.tsb,
+    }));
 
   // 12-week volume chart
   const weeklyVols = [];
@@ -65,20 +71,24 @@ export default function OverviewTab({ metrics, activities, profile }) {
   }
 
   const weeklyTSS = activities.filter(a => moment(a.date).isAfter(moment().subtract(7, "days")))
-    .reduce((s, a) => s + (a.training_stress_score || a.tss || 0), 0);
+    .reduce((s, a) => s + getActivityTSS(a), 0);
 
   async function loadAISummary() {
     setLoadingAI(true);
-    const last14acts = activities.slice(0, 20);
-    const summary = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are an endurance coach. Summarize this athlete's last 14 days in 3 plain-English sentences:
-CTL: ${latest?.ctl ?? "unknown"}, ATL: ${latest?.atl ?? "unknown"}, TSB: ${latest?.tsb ?? "unknown"}
+    try {
+      const last14acts = activities.slice(0, 20);
+      const summary = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are an endurance coach. Summarize this athlete's last 14 days in 3 plain-English sentences:
+CTL: ${fitnessCalc.ctl.toFixed(1)}, ATL: ${fitnessCalc.atl.toFixed(1)}, TSB: ${fitnessCalc.tsb.toFixed(1)}
 Weekly TSS: ${weeklyTSS}, Activities: ${last14acts.length}
 Sports: swim ${last14acts.filter(a=>a.sport==="swim").length}, bike ${last14acts.filter(a=>a.sport==="bike").length}, run ${last14acts.filter(a=>a.sport==="run").length}
 Profile limiter: ${profile?.biggest_limiter ?? "unknown"}
 Cover: current fitness state, fatigue level, what to focus on this week. Be direct and specific.`,
-    });
-    setAiSummary(summary);
+      });
+      setAiSummary(summary);
+    } catch (err) {
+      setAiSummary('');
+    }
     setLoadingAI(false);
   }
 
@@ -86,25 +96,28 @@ Cover: current fitness state, fatigue level, what to focus on this week. Be dire
     <div className="space-y-5">
       {/* Metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <MetricCard label="Fitness (CTL)" value={latest?.ctl ? Math.round(latest.ctl) : null}
-          description="Chronic training load — your current fitness base"
-          change={latest?.ctl && weekAgo?.ctl ? Math.round(latest.ctl - weekAgo.ctl) : undefined} />
-        <MetricCard label="Fatigue (ATL)" value={latest?.atl ? Math.round(latest.atl) : null}
-          description="Acute training load — how tired you are right now"
-          change={latest?.atl && weekAgo?.atl ? Math.round(latest.atl - weekAgo.atl) : undefined} />
-        <MetricCard label="Form (TSB)" value={latest?.tsb ? Math.round(latest.tsb) : null}
-          description="> 0 = fresh, -10 to 0 = optimal training, < -20 = overreaching"
-          change={latest?.tsb && weekAgo?.tsb ? Math.round(latest.tsb - weekAgo.tsb) : undefined} color="tsb" />
+        <MetricCard label="Fitness (CTL)" value={Math.round(fitnessCalc.ctl)}
+          description="Your aerobic fitness base. Built over 42 days. Target: 60-80 for age-group, 80-120 competitive."
+          change={weekAgo ? Math.round(fitnessCalc.ctl - (Object.values(fitnessCalc.history || {})[Math.max(0, Object.keys(fitnessCalc.history || {}).length - 8)]?.ctl || 0)) : undefined} />
+        <MetricCard label="Fatigue (ATL)" value={Math.round(fitnessCalc.atl)}
+          description="Short-term fatigue from recent training. 7-day window. When ATL > CTL you're accumulating more stress than fitness."
+          change={weekAgo ? Math.round(fitnessCalc.atl - (Object.values(fitnessCalc.history || {})[Math.max(0, Object.keys(fitnessCalc.history || {}).length - 8)]?.atl || 0)) : undefined} />
+        <MetricCard label="Form (TSB)" value={Math.round(fitnessCalc.tsb)}
+          description="Form = CTL minus ATL. Optimal race performance: -10 to +5. Hard training: -20 to -10."
+          change={weekAgo ? Math.round(fitnessCalc.tsb - (Object.values(fitnessCalc.history || {})[Math.max(0, Object.keys(fitnessCalc.history || {}).length - 8)]?.tsb || 0)) : undefined} color="tsb" />
         <MetricCard label="Weekly TSS" value={Math.round(weeklyTSS)} unit="pts"
-          description="Total training stress this week" />
+          description="Total training stress this week. Typical: 300-500 for 8-12hr/week athletes." />
         <MetricCard label="Readiness" value={latest?.readiness_score ?? null} unit="/100"
-          description="Today's composite recovery score" />
+          description="Composite score from HRV, sleep, body battery, TSB, load." />
       </div>
 
       {/* CTL/ATL/TSB chart */}
       {fitnessData.length > 3 && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-sm text-foreground">Fitness · Fatigue · Form (90 days)</h3>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-foreground">Fitness · Fatigue · Form (90 days)</h3>
+            <p className="text-xs text-muted-foreground">Blue = fitness (CTL, 42-day avg). Red = fatigue (ATL, 7-day avg). Teal = form (TSB = CTL minus ATL).</p>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={fitnessData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />
@@ -125,7 +138,10 @@ Cover: current fitness state, fatigue level, what to focus on this week. Be dire
       {/* Weekly volume chart */}
       {weeklyVols.some(w => w.swim + w.bike + w.run > 0) && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-sm text-foreground">Weekly Volume — 12 weeks (hours)</h3>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-foreground">Weekly Volume — 12 weeks (hours)</h3>
+            <p className="text-xs text-muted-foreground">Stacked view of your weekly training hours by sport. Consistency with variety is the goal.</p>
+          </div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={weeklyVols}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />

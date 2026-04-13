@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import moment from "moment";
+import { getRaceLabel } from "@/lib/raceTypes";
 
 export default function RaceCard({ race, readiness, profile }) {
   const daysLeft = Math.max(0, Math.ceil((new Date(race.date) - new Date()) / (1000 * 60 * 60 * 24)));
@@ -27,7 +28,7 @@ export default function RaceCard({ race, readiness, profile }) {
       <div className="space-y-2">
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>{moment(race.date).format("MMM D, YYYY")}</span>
-          <span>{race.distance}</span>
+          <span>{getRaceLabel(race.race_type || race.distance)}</span>
         </div>
         {race.location && <p className="text-xs text-muted-foreground">{race.location}</p>}
       </div>

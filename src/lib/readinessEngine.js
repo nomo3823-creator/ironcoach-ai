@@ -4,12 +4,12 @@
  */
 
 export const READINESS_BANDS = [
-  { min: 85, max: 100, label: "Peak",     color: "#22c55e", description: "Your body is primed. This is a day to train hard." },
-  { min: 70, max: 84,  label: "High",     color: "#84cc16", description: "You're recovered and ready. Normal training as planned." },
-  { min: 55, max: 69,  label: "Moderate", color: "#eab308", description: "Some residual fatigue. Reduce intensity slightly, keep duration." },
-  { min: 40, max: 54,  label: "Low",      color: "#f97316", description: "Your body needs more recovery. Easy sessions only today." },
-  { min: 25, max: 39,  label: "Very Low", color: "#ef4444", description: "Significant fatigue detected. Consider rest or very easy movement only." },
-  { min: 0,  max: 24,  label: "Rest",     color: "#dc2626", description: "Your body is telling you to stop. Rest day recommended." },
+  { min: 85, max: 100, label: "Excellent", color: "#14b8a6", description: "Body primed for peak effort. Execute hard sessions as planned." },
+  { min: 70, max: 84,  label: "Good",      color: "#0ea5e9", description: "Well recovered. Train as planned with full confidence." },
+  { min: 55, max: 69,  label: "Moderate",  color: "#f59e0b", description: "Some fatigue present. Reduce intensity 10-15%, keep duration." },
+  { min: 40, max: 54,  label: "Low",       color: "#f97316", description: "Meaningful fatigue. Easy sessions only. Prioritize sleep tonight." },
+  { min: 20, max: 39,  label: "Very Low",  color: "#ef4444", description: "Significant accumulated fatigue. Rest or very easy movement only." },
+  { min: 0,  max: 19,  label: "Rest",      color: "#dc2626", description: "Body is signaling stop. Mandatory rest. Any training will impair recovery." },
 ];
 
 export function getBand(score) {
@@ -27,22 +27,22 @@ export function calculateReadiness(metrics = [], activities = []) {
 
   // ── RECOVERY SIGNALS (50pts) ──────────────────────────────────────────────
 
-  // HRV (15 pts) — prioritize Apple Health HRV
-  const last14 = sorted.slice(0, 14).filter(m => m.hrv > 0);
-  if (today?.hrv && last14.length >= 3) {
-    const baseline = last14.slice(1).reduce((s, m) => s + m.hrv, 0) / (last14.length - 1);
-    const ratio = today.hrv / baseline;
-    breakdown.hrv = ratio >= 1.0 ? 15 : ratio >= 0.95 ? 12 : ratio >= 0.90 ? 8 : ratio >= 0.80 ? 4 : 0;
-    breakdown.hrv_baseline = Math.round(baseline);
-    breakdown.hrv_today = today.hrv;
+  // HRV (15 pts) — 7-day rolling mean vs 14-day baseline (more robust)
+  const todayStr = today?.date || new Date().toISOString().split('T')[0];
+  const last14 = sorted.filter(m => m.hrv > 0 && m.date <= todayStr).slice(-14);
+  const last7hrv = sorted.filter(m => m.hrv > 0 && m.date <= todayStr).slice(-7);
+  if (last14.length >= 3 && last7hrv.length >= 2) {
+    const baseline14 = last14.reduce((s, m) => s + m.hrv, 0) / last14.length;
+    const rolling7mean = last7hrv.reduce((s, m) => s + m.hrv, 0) / last7hrv.length;
+    const ratio = rolling7mean / baseline14;
+    breakdown.hrv = ratio >= 1.02 ? 15 : ratio >= 0.97 ? 12 : ratio >= 0.92 ? 8 : ratio >= 0.85 ? 4 : 0;
+    breakdown.hrv_baseline = Math.round(baseline14);
+    breakdown.hrv_today = today?.hrv || 0;
     breakdown.hrv_ratio = Math.round((ratio - 1) * 100);
-    
-    // Apple Watch signal: if HRV is >15% below baseline, flag as high fatigue
-    if (ratio < 0.85) {
-      breakdown.apple_watch_hrv_alert = true;
-    }
+    // Flag if 7-day mean is more than 8% below baseline (research threshold)
+    if (ratio < 0.92) breakdown.apple_watch_hrv_alert = true;
   } else if (today?.hrv) {
-    breakdown.hrv = 10; // default mid score if no baseline
+    breakdown.hrv = 10;
   }
 
   // Sleep hours (10 pts)
@@ -77,24 +77,34 @@ export function calculateReadiness(metrics = [], activities = []) {
   }
 
   // SpO2 signal (additional recovery metric from Apple Health)
-  if (today?.spo2 && today.spo2 < 95) {
+  if (today?.spo2 && today.spo2 < 94) {
     breakdown.low_spo2_alert = true;
-    breakdown.spo2_penalty = today.spo2 < 93 ? 10 : 5; // Deduct points if SpO2 is low
+    breakdown.spo2_penalty = today.spo2 < 93 ? 10 : 5;
   }
 
   // ── TRAINING LOAD SIGNALS (50pts) ─────────────────────────────────────────
 
-  // TSB (20 pts)
+  // TSB (20 pts) — research-based thresholds (Mujika & Padilla 2003, Coggan PMC)
   const tsb = today?.tsb ?? null;
   if (tsb !== null) {
-    breakdown.tsb = tsb > 15 ? 20 : tsb >= 5 ? 18 : tsb >= 0 ? 15 : tsb >= -5 ? 12 : tsb >= -10 ? 8 : tsb >= -20 ? 4 : 0;
+    // Optimal racing: -10 to +5 TSB
+    breakdown.tsb = tsb >= -10 && tsb <= 5 ? 20    // optimal performance zone
+                 : tsb > 5 && tsb <= 15 ? 17        // fresh but slightly detrained
+                 : tsb > 15 ? 13                     // too fresh = detraining
+                 : tsb >= -20 ? 10                   // normal training fatigue
+                 : tsb >= -30 ? 4                    // high fatigue
+                 : 0;                                // overreached
     breakdown.tsb_value = tsb;
+    breakdown.tsb_interpretation = tsb >= -10 && tsb <= 5 ? "Optimal performance zone"
+      : tsb > 5 ? "Fresh — maintain fitness with quality sessions"
+      : tsb >= -20 ? "Normal training fatigue — body is adapting"
+      : tsb >= -30 ? "High fatigue — monitor recovery closely"
+      : "Overreached — reduce load immediately";
   }
 
   // Days since last rest day (15 pts)
   const actSorted = [...activities].sort((a, b) => b.date > a.date ? 1 : -1);
   let consecDays = 0;
-  const todayStr = today?.date || new Date().toISOString().split('T')[0];
   for (let i = 0; i < 7; i++) {
     const d = new Date(todayStr);
     d.setDate(d.getDate() - i);

@@ -1,5 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, BarChart, Bar, Cell, Legend } from "recharts";
 import moment from "moment";
+import { calculateFitnessMetrics, getActivityTSS } from "@/lib/planUtils";
 
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
 
@@ -80,14 +81,20 @@ function GaugeBar({ label, value, min, max, danger, good, unit }) {
 }
 
 export default function LoadTab({ metrics, activities }) {
-  const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1);
-
-  const fitnessData = sorted.slice(-90).map(m => ({
-    date: moment(m.date).format("MMM D"),
-    CTL: m.ctl || null,
-    ATL: m.atl || null,
-    TSB: m.tsb || null,
-  })).filter(d => d.CTL || d.ATL);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1).filter(m => m.date <= todayStr);
+  
+  // Calculate fitness from activities (not stored metrics)
+  const fitnessCalc = calculateFitnessMetrics(activities);
+  const fitnessData = Object.entries(fitnessCalc.history || {})
+    .filter(([date]) => date <= todayStr)
+    .slice(-90)
+    .map(([date, vals]) => ({
+      date: moment(date).format("MMM D"),
+      CTL: vals.ctl,
+      ATL: vals.atl,
+      TSB: vals.tsb,
+    }));
 
   // TSS by sport per week (16 weeks)
   const sportTSSData = [];
@@ -97,34 +104,40 @@ export default function LoadTab({ metrics, activities }) {
     const weekActs = activities.filter(a => moment(a.date).isBetween(start, end));
     sportTSSData.push({
       label: start.format("MMM D"),
-      swim: Math.round(weekActs.filter(a => a.sport === "swim").reduce((s, a) => s + (a.training_stress_score || a.tss || 0), 0)),
-      bike: Math.round(weekActs.filter(a => a.sport === "bike").reduce((s, a) => s + (a.training_stress_score || a.tss || 0), 0)),
-      run: Math.round(weekActs.filter(a => a.sport === "run").reduce((s, a) => s + (a.training_stress_score || a.tss || 0), 0)),
+      swim: Math.round(weekActs.filter(a => a.sport === "swim").reduce((s, a) => s + getActivityTSS(a), 0)),
+      bike: Math.round(weekActs.filter(a => a.sport === "bike").reduce((s, a) => s + getActivityTSS(a), 0)),
+      run: Math.round(weekActs.filter(a => a.sport === "run").reduce((s, a) => s + getActivityTSS(a), 0)),
     });
   }
 
-  // Training monotony & A:C ratio from latest metrics
-  const latest = sorted[sorted.length - 1];
-  const ctl = latest?.ctl || null;
-  const atl = latest?.atl || null;
-  const acRatio = ctl && atl ? parseFloat((atl / ctl).toFixed(2)) : null;
+  // A:C Ratio from calculated fitness
+  const acRatio = fitnessCalc.ctl > 0 ? parseFloat((fitnessCalc.atl / fitnessCalc.ctl).toFixed(2)) : null;
 
   // Monotony = avg daily TSS / std dev last 7 days
   const last7 = activities.filter(a => moment(a.date).isAfter(moment().subtract(7, "days")));
   const dailyTSS = [];
   for (let i = 0; i < 7; i++) {
     const d = moment().subtract(i, "days").format("YYYY-MM-DD");
-    dailyTSS.push(last7.filter(a => a.date === d).reduce((s, a) => s + (a.training_stress_score || a.tss || 0), 0));
+    dailyTSS.push(last7.filter(a => a.date === d).reduce((s, a) => s + getActivityTSS(a), 0));
   }
   const avg = dailyTSS.reduce((s, v) => s + v, 0) / 7;
   const std = Math.sqrt(dailyTSS.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / 7);
   const monotony = std > 0 ? parseFloat((avg / std).toFixed(2)) : null;
+  
+  // Calculate today's TSS and weekly total for labels
+  const thisWeekStart = moment().startOf('week').format('YYYY-MM-DD');
+  const thisWeekTSS = Object.entries(fitnessCalc.dailyTSS || {})
+    .filter(([d]) => d >= thisWeekStart && d <= todayStr)
+    .reduce((s, [, v]) => s + v, 0);
 
   return (
     <div className="space-y-5">
       {fitnessData.length > 3 && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-sm text-foreground">CTL / ATL / TSB — 90 Days</h3>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-foreground">CTL / ATL / TSB — 90 Days</h3>
+            <p className="text-xs text-muted-foreground">Blue = fitness (CTL, 42-day avg). Red = fatigue (ATL, 7-day avg). Teal = form (TSB = CTL minus ATL). The gap between CTL and ATL shows training stress accumulation.</p>
+          </div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={fitnessData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />
@@ -143,14 +156,21 @@ export default function LoadTab({ metrics, activities }) {
 
       {/* TSS Heatmap */}
       <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-        <h3 className="font-semibold text-sm text-foreground">Training Load Calendar (16 weeks)</h3>
+        <div className="space-y-2">
+          <h3 className="font-semibold text-sm text-foreground">Training Load Calendar (16 weeks)</h3>
+          <p className="text-xs text-muted-foreground">Each cell = one day. Color intensity = training stress. Light = easy, bright = hard, dark = rest. Consistent moderate load with rest days is optimal.</p>
+        </div>
         <TSSHeatmap activities={activities} />
+        <p className="text-xs text-muted-foreground mt-2">Today: {Math.round(fitnessCalc.dailyTSS[todayStr] || 0)} TSS | This week: {Math.round(thisWeekTSS)} TSS</p>
       </div>
 
       {/* Sport TSS breakdown */}
       {sportTSSData.some(w => w.swim + w.bike + w.run > 0) && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-sm text-foreground">Weekly TSS by Sport</h3>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-foreground">Weekly TSS by Sport</h3>
+            <p className="text-xs text-muted-foreground">Grouped bars show how your training stress is distributed across sports each week.</p>
+          </div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={sportTSSData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />
@@ -173,14 +193,14 @@ export default function LoadTab({ metrics, activities }) {
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
               <h3 className="font-semibold text-sm text-foreground">Acute:Chronic Ratio</h3>
               <GaugeBar label="A:C Ratio" value={acRatio} min={0.5} max={1.8} danger={1.5} good={[0.8, 1.3]} unit="" />
-              <p className="text-xs text-muted-foreground">Above 1.5 = injury risk zone. Ideal training range: 0.8–1.3.</p>
+              <p className="text-xs text-muted-foreground">Compares your 7-day load to 42-day baseline. Research shows ratios above 1.5 increase injury risk significantly (Gabbett 2016).</p>
             </div>
           )}
           {monotony !== null && (
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
               <h3 className="font-semibold text-sm text-foreground">Training Monotony</h3>
               <GaugeBar label="Monotony Score" value={monotony} min={0} max={3} danger={1.8} good={[0.5, 1.5]} unit="" />
-              <p className="text-xs text-muted-foreground">How varied your training is. Above 1.5 = overuse injury risk increases.</p>
+              <p className="text-xs text-muted-foreground">Measures daily training variation. High monotony (same load every day) increases overtraining risk. Keep below 1.5.</p>
             </div>
           )}
         </div>

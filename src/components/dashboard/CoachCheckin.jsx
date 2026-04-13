@@ -19,8 +19,9 @@ export default function CoachCheckin({ profile, metrics, workout, journalEntries
       // Already done today — don't regenerate
       return;
     }
-    // Auto-generate on mount only if metrics exist
-    if (metrics) generate();
+    // Only generate if real metric data exists (not all nulls)
+    const hasRealData = metrics && (metrics.hrv || metrics.sleep_hours || metrics.readiness_score || metrics.body_battery);
+    if (hasRealData) generate();
   }, [profile?.id, metrics?.date]);
 
   async function generate() {
@@ -56,12 +57,18 @@ ${recentContext || "No recent conversations."}
 
 Reference a specific number, make an adjustment recommendation if needed, and tie it to their motivation.`;
 
-    const result = await base44.integrations.Core.InvokeLLM({ prompt });
-    setCheckin(result);
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({ prompt });
+      setCheckin(result);
+    } catch (err) {
+      setCheckin('');
+    }
 
     // Mark today as done in profile
     if (profile?.id) {
-      await base44.entities.AthleteProfile.update(profile.id, { last_morning_checkin: today });
+      try {
+        await base44.entities.AthleteProfile.update(profile.id, { last_morning_checkin: today });
+      } catch {}
     }
 
     setLoading(false);
@@ -101,7 +108,7 @@ Reference a specific number, make an adjustment recommendation if needed, and ti
             <ReactMarkdown className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none [&_p]:text-foreground [&_p]:my-0.5 [&_strong]:text-primary">
               {checkin}
             </ReactMarkdown>
-          ) : !metrics ? (
+          ) : (!metrics || (!metrics.hrv && !metrics.sleep_hours && !metrics.readiness_score && !metrics.body_battery)) ? (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <ClipboardList className="h-4 w-4 shrink-0" />
               <span>Log today's metrics to get your personalized check-in. <Link to="/recovery" className="text-primary underline underline-offset-2">Log now →</Link></span>

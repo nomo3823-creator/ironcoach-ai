@@ -47,7 +47,6 @@ export default function Today() {
       setRecommendations(recData || []);
       setWeekWorkouts(weekData || []);
     } catch (err) {
-      console.error("Failed to load Today data:", err);
     } finally {
       setLoading(false);
     }
@@ -65,7 +64,6 @@ export default function Today() {
       await base44.entities.PlanRecommendation.update(rec.id, { status: "approved" });
       await loadData();
     } catch (err) {
-      console.error("Approve error:", err);
     }
   }
 
@@ -74,7 +72,6 @@ export default function Today() {
       await base44.entities.PlanRecommendation.update(rec.id, { status: "rejected" });
       await loadData();
     } catch (err) {
-      console.error("Dismiss error:", err);
     }
   }
 

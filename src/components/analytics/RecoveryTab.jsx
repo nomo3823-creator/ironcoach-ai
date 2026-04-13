@@ -6,8 +6,8 @@ const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222
 const SLEEP_QUALITY_COLOR = { poor: "#ef4444", fair: "#f97316", good: "#22c55e", excellent: "#84cc16" };
 
 export default function RecoveryTab({ metrics }) {
+  const todayStr = new Date().toISOString().split('T')[0];
   const sorted = [...metrics].sort((a, b) => a.date > b.date ? 1 : -1);
-  const todayStr = moment().format('YYYY-MM-DD');
   const last90 = sorted.filter(m => m.date <= todayStr).slice(-90);
 
   // HRV with 14-day rolling avg
@@ -61,8 +61,10 @@ export default function RecoveryTab({ metrics }) {
       {/* HRV */}
       {hrvData.length > 3 && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-sm text-foreground">HRV Trend (90 days)</h3>
-          <p className="text-xs text-muted-foreground">Blue line = daily HRV. Dashed = 14-day rolling average. Staying above average = good recovery.</p>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-foreground">HRV Trend (90 days)</h3>
+            <p className="text-xs text-muted-foreground">HRV (Heart Rate Variability) measures your autonomic nervous system recovery. Higher = better recovered. Blue line is daily reading. Dashed yellow = 14-day rolling average. Staying above average = good adaptation. Drop of 8%+ = reduce intensity today.</p>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={hrvData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />
@@ -80,8 +82,10 @@ export default function RecoveryTab({ metrics }) {
         {/* Resting HR */}
         {rhrData.length > 3 && (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <h3 className="font-semibold text-sm text-foreground">Resting Heart Rate</h3>
-            <p className="text-xs text-muted-foreground">Lower is better. Spike = fatigue/illness signal.</p>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm text-foreground">Resting Heart Rate</h3>
+              <p className="text-xs text-muted-foreground">Your resting heart rate reflects overall recovery and cardiovascular adaptation. Trending down over months = improving fitness. A spike of 5+ bpm above your baseline = fatigue, illness, or dehydration signal.</p>
+            </div>
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={rhrData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />
@@ -97,8 +101,10 @@ export default function RecoveryTab({ metrics }) {
         {/* Sleep */}
         {sleepData.length > 3 && (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <h3 className="font-semibold text-sm text-foreground">Sleep Hours</h3>
-            <p className="text-xs text-muted-foreground">Colors = quality. Aim for 7.5h+ consistently.</p>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm text-foreground">Sleep Hours</h3>
+              <p className="text-xs text-muted-foreground">Sleep is the primary recovery mechanism. Colors: green = good/excellent, orange = fair, red = poor. Dashed green line = 7.5hr target. Research shows performance decreases measurably below 7 hours, especially in endurance sports.</p>
+            </div>
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={sleepData}>
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(215 20% 55%)" }} interval="preserveStartEnd" />
@@ -118,8 +124,10 @@ export default function RecoveryTab({ metrics }) {
         {/* Body Battery */}
         {bbData.length > 3 && (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <h3 className="font-semibold text-sm text-foreground">Body Battery</h3>
-            <p className="text-xs text-muted-foreground">Garmin metric. Below 40 consistently = underrecovery.</p>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm text-foreground">Body Battery</h3>
+              <p className="text-xs text-muted-foreground">Garmin's Body Battery combines HRV, stress, activity, and sleep to estimate available energy reserves (0-100). Below 40 consistently = insufficient recovery between sessions. Aim to start each hard session above 60.</p>
+            </div>
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={bbData}>
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(215 20% 55%)" }} interval="preserveStartEnd" />
@@ -135,7 +143,10 @@ export default function RecoveryTab({ metrics }) {
         {/* Readiness history */}
         {readinessData.length > 3 && (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <h3 className="font-semibold text-sm text-foreground">Readiness Score History</h3>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm text-foreground">Readiness Score History</h3>
+              <p className="text-xs text-muted-foreground">Your composite daily readiness score. Calculated from HRV, sleep, body battery, TSB, and recent load. Green dashed line = Good threshold (70). Red dashed line = Low threshold (40). Sustained periods below 55 = accumulated fatigue requiring a recovery week.</p>
+            </div>
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={readinessData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />
@@ -154,8 +165,10 @@ export default function RecoveryTab({ metrics }) {
       {/* TSB vs Readiness scatter */}
       {rcScatter.length > 5 && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-sm text-foreground">TSB vs Next-Day Readiness</h3>
-          <p className="text-xs text-muted-foreground">Shows how your body's form score correlates with next-day recovery. Dots clustering top-right = good relationship.</p>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-foreground">TSB vs Next-Day Readiness</h3>
+            <p className="text-xs text-muted-foreground">Each dot = one day. Shows relationship between your form score (TSB) and next-day readiness. A cluster of dots trending up-right confirms your recovery is correlating correctly with training load management.</p>
+          </div>
           <ResponsiveContainer width="100%" height={180}>
             <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 20% 16%)" />

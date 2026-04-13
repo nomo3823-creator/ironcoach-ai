@@ -31,15 +31,19 @@ export function formatDuration(minutes) {
 }
 
 export function getReadinessColor(score) {
-  if (score >= 80) return "#14b8a6";
-  if (score >= 60) return "#0ea5e9";
-  if (score >= 40) return "#f59e0b";
-  return "#ef4444";
+  if (score >= 85) return "#14b8a6";
+  if (score >= 70) return "#0ea5e9";
+  if (score >= 55) return "#f59e0b";
+  if (score >= 40) return "#f97316";
+  if (score >= 20) return "#ef4444";
+  return "#dc2626";
 }
 
 export function getReadinessLabel(score) {
-  if (score >= 80) return "Excellent";
-  if (score >= 60) return "Good";
-  if (score >= 40) return "Moderate";
-  return "Low";
+  if (score >= 85) return "Excellent";
+  if (score >= 70) return "Good";
+  if (score >= 55) return "Moderate";
+  if (score >= 40) return "Low";
+  if (score >= 20) return "Very Low";
+  return "Rest";
 }

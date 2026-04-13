@@ -15,6 +15,7 @@ import TrainingLoadChart from "@/components/dashboard/TrainingLoadChart";
 import RaceCard from "@/components/dashboard/RaceCard";
 import WeeklySnapshot from "@/components/dashboard/WeeklySnapshot";
 import { calculateReadiness } from "@/lib/readinessEngine";
+import { getActivityTSS } from "@/lib/planUtils";
 import moment from "moment";
 
 const SkeletonSection = () => (
@@ -78,7 +79,6 @@ export default function Dashboard() {
       const planned = weekWorkoutsData?.find(w => w.date === today) || null;
       setPlannedWorkout(planned);
     } catch (err) {
-      console.error("Dashboard load error:", err);
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ export default function Dashboard() {
     daysToRace,
     raceName: nextRace?.name,
     activitiesThisWeek: weekActs.length,
-    weeklyTSS: weekActs.reduce((s, a) => s + (a.tss || a.training_stress_score || 0), 0),
+    weeklyTSS: weekActs.reduce((s, a) => s + getActivityTSS(a), 0),
     pendingRecsCount: pendingRecs.length,
     readinessScore: todayMetrics?.readiness_score,
     weekCompliance: weekWorkouts.length > 0 ? Math.round((weekWorkouts.filter(w => w.status === "completed").length / weekWorkouts.length) * 100) : null,

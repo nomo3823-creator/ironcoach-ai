@@ -30,16 +30,76 @@ export async function logPlanChange({
 }
 
 /**
+ * Calculate fitness metrics (CTL, ATL, TSB) from activities using Coggan PMC model
+ */
+export function calculateFitnessMetrics(activities) {
+  if (!activities?.length) return { ctl: 0, atl: 0, tsb: 0, dailyTSS: {}, history: {} };
+  
+  const sorted = [...activities].sort((a, b) => a.date > b.date ? 1 : -1);
+  const today = new Date().toISOString().split("T")[0];
+  
+  // Build daily TSS map
+  const dailyTSS = {};
+  sorted.forEach(act => {
+    const tss = act.training_stress_score || act.tss_calculated || act.tss || 0;
+    dailyTSS[act.date] = (dailyTSS[act.date] || 0) + tss;
+  });
+  
+  // CTL = 42-day exponentially weighted average (fitness)
+  // ATL = 7-day exponentially weighted average (fatigue)
+  const ctlDecay = 1 - Math.exp(-1 / 42);
+  const atlDecay = 1 - Math.exp(-1 / 7);
+  
+  let ctl = 0, atl = 0;
+  const earliest = sorted[0]?.date || today;
+  const history = {};
+  
+  let current = new Date(earliest);
+  const end = new Date(today);
+  
+  while (current <= end) {
+    const dateStr = current.toISOString().split("T")[0];
+    const tss = dailyTSS[dateStr] || 0;
+    ctl = ctl + (tss - ctl) * ctlDecay;
+    atl = atl + (tss - atl) * atlDecay;
+    history[dateStr] = {
+      ctl: parseFloat(ctl.toFixed(1)),
+      atl: parseFloat(atl.toFixed(1)),
+      tsb: parseFloat((ctl - atl).toFixed(1)),
+      tss,
+    };
+    current.setDate(current.getDate() + 1);
+  }
+  
+  const todayMetrics = history[today] || { ctl: 0, atl: 0, tsb: 0 };
+  return {
+    ctl: todayMetrics.ctl,
+    atl: todayMetrics.atl,
+    tsb: todayMetrics.tsb,
+    history,
+    dailyTSS,
+  };
+}
+
+/**
+ * Get TSS from an activity record, handling multiple field name conventions
+ */
+export function getActivityTSS(activity) {
+  return activity?.training_stress_score || activity?.tss_calculated || activity?.tss || activity?.suffer_score ? Math.round((activity.suffer_score || 0) * 1.0) : 0;
+}
+
+/**
  * Downgrade a workout to easy/recovery and log the change
  */
-export async function downgradeWorkout(workout, reason, changeType, signalValue) {
+export async function downgradeWorkout(workout, reason, changeType, signalValue, severity = "moderate") {
   const before = {
     title: workout.title,
     duration_minutes: workout.duration_minutes,
     intensity: workout.intensity,
   };
 
-  const newDuration = Math.round((workout.duration_minutes || 60) * 0.6);
+  const reductionFactor = severity === "severe" ? 0.5 : severity === "moderate" ? 0.7 : 0.85;
+  const newDuration = Math.round((workout.duration_minutes || 60) * reductionFactor);
   const newTitle = `[Recovery] ${workout.title}`;
 
   await base44.entities.PlannedWorkout.update(workout.id, {
@@ -69,8 +129,9 @@ export async function downgradeWorkout(workout, reason, changeType, signalValue)
 export function checkHrvDrop(todayMetrics, historicalMetrics) {
   if (!todayMetrics?.hrv || !historicalMetrics?.length) return { shouldDowngrade: false };
 
+  const todayStr = new Date().toISOString().split("T")[0];
   const last14 = historicalMetrics
-    .filter((m) => m.hrv > 0)
+    .filter((m) => m.hrv > 0 && m.date <= todayStr)
     .slice(-14)
     .map((m) => m.hrv);
 
@@ -80,7 +141,7 @@ export function checkHrvDrop(todayMetrics, historicalMetrics) {
   const dropPct = ((avg - todayMetrics.hrv) / avg) * 100;
 
   return {
-    shouldDowngrade: dropPct >= 10,
+    shouldDowngrade: dropPct >= 8,
     dropPct: Math.round(dropPct),
     rollingAvg: Math.round(avg),
   };
