@@ -163,7 +163,7 @@ Return the workouts JSON array (max ${maxWorkouts} items):`,
 
 // ─── Component ─────────────────────────────────────────────────────────────
 export default function Onboarding() {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoadingAuth } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -177,12 +177,13 @@ export default function Onboarding() {
 
   // Redirect if already onboarded
   useEffect(() => {
+    if (!currentUser || isLoadingAuth) return;
     async function checkOnboarding() {
       const profiles = await base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1);
       if (profiles?.[0]?.onboarding_complete) navigate("/");
     }
     checkOnboarding();
-  }, []);
+  }, [currentUser, isLoadingAuth]);
 
   // Welcome message
   useEffect(() => {
@@ -360,6 +361,14 @@ export default function Onboarding() {
       setGenProgress("");
       setPhase("confirming");
     }
+  }
+
+  if (isLoadingAuth || !currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (

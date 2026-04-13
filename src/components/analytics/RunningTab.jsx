@@ -1,7 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ScatterChart, Scatter, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { PieChart, Pie, Legend } from "recharts";
 import moment from "moment";
-import DailyRecommendationWidget from "./DailyRecommendationWidget";
 
 const tooltipStyle = { background: "hsl(222 40% 9%)", border: "1px solid hsl(222 20% 16%)", borderRadius: 8, fontSize: 12 };
 
@@ -93,17 +92,12 @@ export default function RunningTab({ activities, metrics, profile }) {
 
   if (runs.length === 0) {
     return (
-      <div className="space-y-4">
-        <DailyRecommendationWidget sport="run" activities={activities} metrics={metrics} />
-        <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground text-sm">No run data synced yet. Connect Strava and sync your activities.</div>
-      </div>
+      <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground text-sm">No run data synced yet. Connect Strava and sync your activities.</div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <DailyRecommendationWidget sport="run" activities={activities} metrics={metrics} />
-
       {/* Pace trend */}
       {paceTrend.length > 2 && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
