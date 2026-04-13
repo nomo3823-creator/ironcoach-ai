@@ -18,7 +18,25 @@ export function getBand(score) {
 
 export function calculateReadiness(metrics = [], activities = []) {
   const sorted = [...metrics].sort((a, b) => b.date > a.date ? 1 : -1);
-  const today = sorted[0];
+  // Today's raw row (may be the morning-checkin row with null Apple Health fields).
+  const rawToday = sorted[0];
+  // Fallback: most recent row that actually has Apple Health values. When
+  // today's row is the morning check-in only, this lets the engine see
+  // yesterday's HRV / sleep / RHR instead of declaring "no data".
+  const mostRecentWithData = sorted.find(m =>
+    (m.hrv && m.hrv > 0) ||
+    (m.sleep_hours && m.sleep_hours > 0) ||
+    (m.body_battery && m.body_battery > 0) ||
+    (m.resting_hr && m.resting_hr > 0) ||
+    (m.spo2 && m.spo2 > 0)
+  );
+  // Merge: prefer today's own values where present, otherwise fall back.
+  const today = rawToday && mostRecentWithData && rawToday !== mostRecentWithData
+    ? {
+        ...mostRecentWithData,
+        ...Object.fromEntries(Object.entries(rawToday).filter(([, v]) => v !== null && v !== undefined)),
+      }
+    : (rawToday || mostRecentWithData || null);
 
   const breakdown = {
     hrv: 0, sleep_hours: 0, sleep_quality: 0, body_battery: 0, resting_hr: 0,

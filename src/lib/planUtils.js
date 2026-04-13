@@ -71,7 +71,11 @@ export function calculateFitnessMetrics(activities) {
     current.setDate(current.getDate() + 1);
   }
   
-  const todayMetrics = history[today] || { ctl: 0, atl: 0, tsb: 0 };
+  // Prefer today's entry but fall back to the most recent history key if
+  // DST / ISO rounding skewed the key by a day (history is a dense daily map).
+  const historyKeys = Object.keys(history).sort();
+  const mostRecentKey = historyKeys[historyKeys.length - 1];
+  const todayMetrics = history[today] || history[mostRecentKey] || { ctl: 0, atl: 0, tsb: 0 };
   return {
     ctl: todayMetrics.ctl,
     atl: todayMetrics.atl,
