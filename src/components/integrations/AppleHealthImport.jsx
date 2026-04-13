@@ -269,47 +269,171 @@ export default function AppleHealthImport({ onImported }) {
   const [step, setStep] = useState(1);
   const [selectedMode, setSelectedMode] = useState('smart');
 
-  const { markImportDone } = useImport();
-  
   const handleFile = async (file) => {
-    if (!file) return;
+    if (!file || !currentUser) return;
     setStep(3);
-    await importCtx.startImport(file, selectedMode);
-    
-    // Wait for status to be set, then update profile and signal global refresh
-    const maxWait = 30; // 3 seconds with 100ms checks
-    let checks = 0;
-    while (importCtx.status !== 'done' && checks < maxWait) {
-      await new Promise(r => setTimeout(r, 100));
-      checks++;
-    }
-    
-    if (importCtx.status === 'done') {
+
+    try {
+      // Step 1: If zip file, extract the XML first
+      let xmlFile = file;
+      if (file.name.endsWith('.zip') || file.type === 'application/zip') {
+        importCtx.updateProgress({ percent: 2, message: 'Extracting zip file...', counters: {} });
+        const zip = new JSZip();
+        const contents = await zip.loadAsync(file);
+        const xmlEntry = Object.keys(contents.files).find(name => name.endsWith('export.xml') || name.endsWith('.xml'));
+        if (!xmlEntry) throw new Error('No export.xml found in zip file');
+        const xmlBlob = await contents.files[xmlEntry].async('blob');
+        xmlFile = new File([xmlBlob], 'export.xml', { type: 'text/xml' });
+      }
+
+      // Step 2: Parse the XML file
+      importCtx.updateProgress({ percent: 5, message: 'Starting parse...', counters: {} });
+      const { parseAppleHealthXML } = await import('@/lib/appleHealthParser');
+
+      const result = await parseAppleHealthXML(
+        xmlFile,
+        (progressData) => {
+          importCtx.updateProgress({
+            percent: Math.round(progressData.percent * 0.7), // parsing = 0-70%
+            message: progressData.message,
+            counters: progressData.counters,
+          });
+        },
+        selectedMode
+      );
+
+      const { metrics, workouts, counters } = result;
+
+      // Step 3: Save metrics to DailyMetrics (upsert per date)
+      const today = new Date().toISOString().split('T')[0];
+      const metricsToSave = metrics.filter(m => m.date <= today);
+      const total = metricsToSave.length;
+      let savedCount = 0;
+      let errors = [];
+
+      importCtx.updateProgress({
+        percent: 70,
+        message: `Saving ${total} days of metrics...`,
+        counters,
+      });
+
+      // Process in batches of 20 to avoid overwhelming the API
+      const BATCH_SIZE = 20;
+      for (let i = 0; i < metricsToSave.length; i += BATCH_SIZE) {
+        const batch = metricsToSave.slice(i, i + BATCH_SIZE);
+
+        await Promise.all(batch.map(async (metric) => {
+          try {
+            // Check if a record already exists for this date and user
+            const existing = await base44.entities.DailyMetrics.filter({
+              date: metric.date,
+              created_by: currentUser.email,
+            });
+
+            const dataToSave = {
+              ...metric,
+              created_by: currentUser.email,
+            };
+
+            if (existing && existing.length > 0) {
+              // Update existing record — only overwrite fields that Apple Health provides
+              // Preserve any manually logged fields (mood, notes, injury_flag etc)
+              const updateData = {};
+              if (metric.hrv != null) updateData.hrv = metric.hrv;
+              if (metric.resting_hr != null) updateData.resting_hr = metric.resting_hr;
+              if (metric.sleep_hours != null) updateData.sleep_hours = metric.sleep_hours;
+              if (metric.sleep_quality != null) updateData.sleep_quality = metric.sleep_quality;
+              if (metric.sleep_deep_minutes != null) updateData.sleep_deep_minutes = metric.sleep_deep_minutes;
+              if (metric.sleep_rem_minutes != null) updateData.sleep_rem_minutes = metric.sleep_rem_minutes;
+              if (metric.sleep_awake_minutes != null) updateData.sleep_awake_minutes = metric.sleep_awake_minutes;
+              if (metric.spo2 != null) updateData.spo2 = metric.spo2;
+              if (metric.respiratory_rate != null) updateData.respiratory_rate = metric.respiratory_rate;
+              if (metric.active_calories != null) updateData.active_calories = metric.active_calories;
+              if (metric.vo2_max != null) updateData.vo2_max = metric.vo2_max;
+              if (metric.weight_kg != null) updateData.weight_kg = metric.weight_kg;
+
+              await base44.entities.DailyMetrics.update(existing[0].id, updateData);
+            } else {
+              // Create new record
+              await base44.entities.DailyMetrics.create(dataToSave);
+            }
+            savedCount++;
+          } catch (err) {
+            errors.push(`${metric.date}: ${err.message}`);
+          }
+        }));
+
+        const savePercent = 70 + Math.round(((i + BATCH_SIZE) / total) * 25);
+        importCtx.updateProgress({
+          percent: Math.min(95, savePercent),
+          message: `Saving metrics... ${savedCount}/${total} days`,
+          counters,
+        });
+      }
+
+      // Step 4: Save Apple Watch workouts as Activity records (skip duplicates)
+      if (workouts && workouts.length > 0) {
+        importCtx.updateProgress({ percent: 96, message: `Saving ${workouts.length} workouts...`, counters });
+
+        for (const workout of workouts) {
+          try {
+            // Check for duplicate by external_id
+            const existing = await base44.entities.Activity.filter({
+              external_id: workout.external_id,
+              created_by: currentUser.email,
+            });
+            if (!existing || existing.length === 0) {
+              await base44.entities.Activity.create({
+                ...workout,
+                created_by: currentUser.email,
+              });
+            }
+          } catch (err) {
+            // Skip duplicate/error workouts silently
+          }
+        }
+      }
+
+      // Step 5: Update AthleteProfile with import metadata
+      importCtx.updateProgress({ percent: 98, message: 'Finalising...', counters });
+
       try {
         const profiles = await base44.entities.AthleteProfile.filter(
           { created_by: currentUser.email },
-          "-created_date",
+          '-created_date',
           1
         );
         if (profiles?.[0]) {
           await base44.entities.AthleteProfile.update(profiles[0].id, {
             last_apple_health_import_date: new Date().toISOString(),
-            apple_health_days_imported:
-              (profiles[0].apple_health_days_imported || 0) + (importCtx.totalDays || 0),
+            apple_health_days_imported: savedCount,
             apple_health_connected: true,
           });
         }
-        markImportDone();
-        toast.success('Import complete — pages refreshing');
       } catch (err) {
-        console.error('Failed to update profile:', err);
-        markImportDone(); // Mark done even if profile update failed
+        // Non-fatal — metrics already saved
       }
-    } else {
-      console.warn('Import did not complete, status:', importCtx.status);
+
+      // Step 6: Mark complete
+      importCtx.updateProgress({
+        percent: 100,
+        message: 'Import complete!',
+        counters,
+        saved: savedCount,
+        errors,
+        totalDays: savedCount,
+      });
+
+      importCtx.markImportDone();
+      setStep(4);
+      toast.success(`Imported ${savedCount} days of Apple Health data`);
+      onImported?.();
+
+    } catch (err) {
+      toast.error(`Import failed: ${err.message}`);
+      setStep(2); // Go back to file picker
+      importCtx.cancelImport();
     }
-    
-    onImported?.();
   };
 
   const handleFileSelect = (e) => {

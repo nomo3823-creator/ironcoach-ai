@@ -18,7 +18,7 @@ import { calculateReadiness } from "../lib/readinessEngine";
 
 export default function Analytics() {
   const { currentUser } = useAuth();
-  const { lastImportedAt } = useImport();
+  const { lastImportedAt, importVersion } = useImport();
   const [metrics, setMetrics] = useState([]);
   const [activities, setActivities] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -38,7 +38,7 @@ export default function Analytics() {
       setLoading(false);
     }
     load();
-  }, [currentUser, lastImportedAt]);
+  }, [currentUser, lastImportedAt, importVersion]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">

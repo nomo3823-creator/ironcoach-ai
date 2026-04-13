@@ -23,11 +23,14 @@ function pick(obj, keys) {
 
 export function ImportProvider({ children }) {
   const [lastImportedAt, setLastImportedAt] = useState(null);
+  const [importVersion, setImportVersion] = useState(0);
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [percent, setPercent] = useState(0);
   const [saved, setSaved] = useState(0);
   const [totalDays, setTotalDays] = useState(0);
+  const [counters, setCounters] = useState({});
+  const [errors, setErrors] = useState([]);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -41,6 +44,7 @@ export function ImportProvider({ children }) {
     const now = Date.now();
     setLastImportedAt(now);
     localStorage.setItem('ironcoach:last_import_at', String(now));
+    setImportVersion(v => v + 1); // triggers re-fetch in subscribed pages
     // Invalidate React Query cache for metrics and activities
     queryClientInstance.invalidateQueries({ queryKey: ['DailyMetrics'] });
     queryClientInstance.invalidateQueries({ queryKey: ['Activity'] });
@@ -48,6 +52,15 @@ export function ImportProvider({ children }) {
     window.dispatchEvent(new Event('ironcoach:imported'));
     setTimeout(() => setStatus('done'), 100);
   };
+
+  function updateProgress(data) {
+    if (data.percent !== undefined) setPercent(data.percent);
+    if (data.message !== undefined) setMessage(data.message);
+    if (data.counters !== undefined) setCounters(data.counters);
+    if (data.saved !== undefined) setSaved(data.saved);
+    if (data.errors !== undefined) setErrors(data.errors);
+    if (data.totalDays !== undefined) setTotalDays(data.totalDays);
+  }
 
   const startImport = async (file, mode) => {
     setStatus('parsing');
@@ -112,7 +125,7 @@ export function ImportProvider({ children }) {
   };
 
   return (
-    <ImportContext.Provider value={{ lastImportedAt, markImportDone, startImport, cancelImport, status, setStatus, message, setMessage, percent, setPercent, saved, setSaved, totalDays, setTotalDays }}>
+    <ImportContext.Provider value={{ lastImportedAt, importVersion, markImportDone, startImport, cancelImport, updateProgress, status, setStatus, message, setMessage, percent, setPercent, saved, setSaved, totalDays, setTotalDays, counters, setCounters, errors, setErrors }}>
       {children}
     </ImportContext.Provider>
   );

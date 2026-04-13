@@ -31,7 +31,7 @@ const SkeletonSection = () => (
 export default function Dashboard() {
   const { currentUser, isLoadingAuth } = useAuth();
   const navigate = useNavigate();
-  const { lastImportedAt } = useImport();
+  const { lastImportedAt, importVersion } = useImport();
   const [profile, setProfile] = useState(null);
   const [todayMetrics, setTodayMetrics] = useState(null);
   const [activities, setActivities] = useState([]);
@@ -50,7 +50,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!currentUser || isLoadingAuth) return;
     loadDashboardData();
-  }, [currentUser, isLoadingAuth, lastImportedAt]);
+  }, [currentUser, isLoadingAuth, lastImportedAt, importVersion]);
 
   async function loadDashboardData() {
     try {

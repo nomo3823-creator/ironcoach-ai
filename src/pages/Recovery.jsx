@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import ReadinessBreakdown from "@/components/ReadinessBreakdown";
 export default function Recovery() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { importVersion } = useImport();
   const [loading, setLoading] = useState(true);
   const [todayMetrics, setTodayMetrics] = useState(null);
   const [completedCheckin, setCompletedCheckin] = useState(false);
@@ -27,7 +29,7 @@ export default function Recovery() {
   useEffect(() => {
     if (!currentUser) return;
     loadData();
-  }, [currentUser]);
+  }, [currentUser, importVersion]);
 
   async function loadData() {
     try {

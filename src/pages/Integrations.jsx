@@ -11,17 +11,23 @@ import { useToast } from "@/components/ui/use-toast";
 export default function Integrations() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
-  const { markImportDone } = useImport();
+  const { markImportDone, importVersion } = useImport();
   const [profile, setProfile] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
+  const [lastImportDate, setLastImportDate] = useState(null);
 
   useEffect(() => {
     if (!currentUser) return;
     base44.entities.AthleteProfile.filter({ created_by: currentUser.email })
-      .then(data => setProfile(data[0] || null));
-  }, [currentUser]);
+      .then(data => {
+        setProfile(data[0] || null);
+        if (data?.[0]?.last_apple_health_import_date) {
+          setLastImportDate(new Date(data[0].last_apple_health_import_date).toLocaleDateString());
+        }
+      });
+  }, [currentUser, importVersion]);
 
   // Listen for Strava OAuth callback via postMessage from new tab
   useEffect(() => {
@@ -162,6 +168,21 @@ export default function Integrations() {
 
       {/* Apple Health */}
       <AppleHealthSettings />
+      {lastImportDate && (
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-xl bg-recovery/10 flex items-center justify-center text-2xl">📊</div>
+            <div>
+              <h2 className="font-semibold text-foreground">Apple Health Import Status</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Last imported: <span className="text-foreground font-medium">{lastImportDate}</span></p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-secondary/40 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-recovery" />
+            <span>Go to <strong className="text-foreground">Dashboard</strong> or <strong className="text-foreground">Recovery</strong> to see your imported metrics (HRV, sleep, resting HR, etc.)</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
