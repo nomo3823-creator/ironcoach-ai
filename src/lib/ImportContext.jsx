@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import JSZip from 'jszip';
 import { parseAppleHealthXML } from '@/lib/appleHealthParser';
 
 const ImportContext = createContext();
@@ -53,33 +52,45 @@ export function ImportProvider({ children }) {
     setTotalDays(0);
     
     try {
-      const result = await base44.functions.invoke('parseAppleHealth', {
-        file: file,
-        mode: mode,
-      });
+      // Parse Apple Health file client-side
+      const parseResult = await parseAppleHealthXML(file, (progress) => {
+        setPercent(Math.round(progress.percent * 0.4)); // 40% for parsing
+        setMessage(progress.message);
+      }, mode);
       
-      if (result?.status === 'success') {
-        setStatus('saving');
-        setMessage(`Saving ${result.totalDays} days of data...`);
-        setPercent(50);
-        setTotalDays(result.totalDays || 0);
-        
-        // Call another function to save the data
-        const saveResult = await base44.functions.invoke('saveAppleHealthData', {
-          data: result.data,
-        });
-        
-        if (saveResult?.status === 'success') {
-          setSaved(saveResult.saved || 0);
-          setPercent(100);
-          setMessage('Import complete!');
-          setStatus('done');
-        } else {
-          throw new Error(saveResult?.error || 'Save failed');
-        }
-      } else {
-        throw new Error(result?.error || 'Parse failed');
+      if (!parseResult?.metrics || parseResult.metrics.length === 0) {
+        throw new Error('No valid metrics found in file');
       }
+      
+      setStatus('saving');
+      setMessage(`Saving ${parseResult.metrics.length} days of data...`);
+      setPercent(45);
+      setTotalDays(parseResult.metrics.length);
+      
+      // Save metrics to database
+      let saved = 0;
+      const batchSize = 50;
+      for (let i = 0; i < parseResult.metrics.length; i += batchSize) {
+        const batch = parseResult.metrics.slice(i, i + batchSize);
+        await base44.entities.DailyMetrics.bulkCreate(batch);
+        saved += batch.length;
+        const pct = 45 + Math.round((saved / parseResult.metrics.length) * 50);
+        setPercent(pct);
+        setMessage(`Saved ${saved} / ${parseResult.metrics.length} days`);
+        setSaved(saved);
+      }
+      
+      // Save workouts if any
+      if (parseResult.workouts?.length > 0) {
+        for (let i = 0; i < parseResult.workouts.length; i += batchSize) {
+          const batch = parseResult.workouts.slice(i, i + batchSize);
+          await base44.entities.Activity.bulkCreate(batch);
+        }
+      }
+      
+      setPercent(100);
+      setMessage('Import complete!');
+      setStatus('done');
     } catch (err) {
       setStatus('error');
       setMessage(err.message || 'Import failed');
