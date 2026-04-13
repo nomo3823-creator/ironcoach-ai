@@ -28,10 +28,11 @@ export default function Analytics() {
     if (!currentUser) return;
     async function load() {
       const [m, a, p] = await Promise.all([
-        // "-date" so we get the NEWEST 500 metrics. With "date" (ascending) we
-        // were fetching the oldest 500 rows, missing all recent HRV/sleep data
-        // and producing a readiness score that disagreed with Dashboard/Recovery.
-        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 500),
+        // 120 days of metrics — plenty for the 90-day chart and readiness,
+        // and safely within Base44's fetch ceiling. Requests for 500 appear
+        // to silently return empty on this app, which made Analytics compute
+        // readiness from zero rows and show a score of exactly 40 (tsb-only).
+        base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 120),
         base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 500),
         base44.entities.AthleteProfile.filter({ created_by: currentUser.email }, "-created_date", 1),
       ]);
