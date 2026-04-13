@@ -420,14 +420,6 @@ export default function CoachChat() {
       prescriptionNote = "\n\n[COACH INSTRUCTION: The athlete is asking for a full workout prescription. Respond with the complete structured session breakdown including: warm-up duration and targets, every main set interval with exact duration/distance and exact power/pace/HR targets from their calculated zones, rest periods, cool-down, and why each block is at that intensity. Use their actual zones from the context. Format each block clearly on a new line.]";
     }
 
-    const zones = calculateZones(ctx.profile);
-    const systemPrompt = buildSystemPrompt(ctx.profile, ctx.races?.filter(r => r.date >= ctx.today)?.[0], ctx.next14Days, zones, ctx.metrics?.readiness_score, ctx.metrics, allMetrics, allActivities);
-    
-    await base44.agents.addMessage(conv, {
-      role:    "system",
-      content: systemPrompt,
-    });
-    
     await base44.agents.addMessage(conv, {
       role:    "user",
       content: `${contextStr}${prescriptionNote}\n\nAthlete: ${msg}`,
