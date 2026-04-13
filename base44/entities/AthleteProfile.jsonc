@@ -76,6 +76,22 @@
       "title": "Strava Connected",
       "default": false
     },
+    "strava_access_token": {
+      "type": "string",
+      "title": "Strava Access Token"
+    },
+    "strava_refresh_token": {
+      "type": "string",
+      "title": "Strava Refresh Token"
+    },
+    "strava_token_expires_at": {
+      "type": "number",
+      "title": "Strava Token Expires At"
+    },
+    "strava_athlete_id": {
+      "type": "string",
+      "title": "Strava Athlete ID"
+    },
     "garmin_connected": {
       "type": "boolean",
       "title": "Garmin Connected",

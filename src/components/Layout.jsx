@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Calendar, BarChart3, Trophy, Dumbbell, MessageCircle, Settings, Menu, X, Zap, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Calendar, BarChart3, Trophy, Dumbbell, MessageCircle, Settings, Menu, X, Zap, ClipboardList, Plug } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const NAV = [
   { path: "/race", icon: Trophy, label: "Race Planner" },
   { path: "/library", icon: Dumbbell, label: "Workouts" },
   { path: "/coach", icon: MessageCircle, label: "Coach Chat" },
+  { path: "/integrations", icon: Plug, label: "Integrations" },
   { path: "/settings", icon: Settings, label: "Settings" },
 ];
 
