@@ -1,11 +1,12 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Calendar, BarChart3, Trophy, Dumbbell, MessageCircle, Settings, Menu, X, Zap } from "lucide-react";
+import { LayoutDashboard, Calendar, BarChart3, Trophy, Dumbbell, MessageCircle, Settings, Menu, X, Zap, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/plan", icon: Calendar, label: "Training Plan" },
+  { path: "/log", icon: ClipboardList, label: "Log Metrics" },
   { path: "/analytics", icon: BarChart3, label: "Analytics" },
   { path: "/race", icon: Trophy, label: "Race Planner" },
   { path: "/library", icon: Dumbbell, label: "Workouts" },

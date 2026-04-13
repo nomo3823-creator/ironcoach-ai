@@ -12,6 +12,7 @@ import { checkHrvDrop, checkPoorSleepStreak, downgradeWorkout } from "@/lib/plan
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import moment from "moment";
+import { getRaceLabel } from "@/lib/raceTypes";
 
 function MetricRow({ label, value, sub }) {
   return (
@@ -67,8 +68,9 @@ export default function Dashboard() {
 
     const nextWeekWorkouts = pastWorkouts.filter((w) => w.date >= today && w.date <= moment().add(7, "days").format("YYYY-MM-DD") && w.status === "planned").slice(0, 14);
 
+    const raceLabel = profile.race_type ? getRaceLabel(profile.race_type) : "endurance";
     const review = await base44.integrations.Core.InvokeLLM({
-      prompt: `Weekly training review for an Ironman athlete.
+      prompt: `Weekly training review for a ${raceLabel} athlete.
 Last week: ${completed} completed, ${missed} missed (${compliance}% compliance). Average HRV: ${avgHrv || "unknown"}ms.
 Profile: FTP ${profile.current_ftp || "unknown"}W, limiter: ${profile.biggest_limiter || "unknown"}.
 Next week planned workouts: ${JSON.stringify(nextWeekWorkouts.map(w => ({ id: w.id, date: w.date, title: w.title, duration: w.duration_minutes, intensity: w.intensity })))}
@@ -127,6 +129,13 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
 
     // Mark review done
     await base44.entities.AthleteProfile.update(profile.id, { last_weekly_review_date: today });
+
+    toast("Weekly review complete", {
+      description: review?.adjustments?.length
+        ? `Adjusted ${review.adjustments.length} session(s) for this week. Open the coach chat for details.`
+        : "No adjustments needed — your plan stays as-is this week.",
+      duration: 8000,
+    });
   }
 
   async function load() {
@@ -207,7 +216,7 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-5">
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
-          Good {greeting()}, <span className="text-primary">{currentUser?.full_name?.split(" ")[0] || "Athlete"}</span>
+          Good {greeting()}, <span className="text-primary">{profile?.first_name || currentUser?.full_name?.split(" ")[0] || "Athlete"}</span>
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{moment().format("dddd, MMMM Do")} · Week {moment().isoWeek()}</p>
       </div>
@@ -249,7 +258,7 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
                 <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold">{nextRace.priority}</span>
               </div>
               <div className="text-3xl font-bold text-accent">{daysToRace} <span className="text-sm font-normal text-muted-foreground">days</span></div>
-              <p className="text-xs text-muted-foreground mt-1">{moment(nextRace.date).format("MMM D, YYYY")} · {nextRace.distance === "140.6" ? "Full Ironman" : "70.3"}{nextRace.location ? ` · ${nextRace.location}` : ""}</p>
+              <p className="text-xs text-muted-foreground mt-1">{moment(nextRace.date).format("MMM D, YYYY")} · {getRaceLabel(nextRace.race_type || nextRace.distance)}{nextRace.location ? ` · ${nextRace.location}` : ""}</p>
               {nextRace.readiness_score > 0 && (
                 <div className="mt-3">
                   <div className="flex justify-between text-xs mb-1">
