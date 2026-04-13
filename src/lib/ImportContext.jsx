@@ -21,6 +21,11 @@ function pick(obj, keys) {
 
 export function ImportProvider({ children }) {
   const [lastImportedAt, setLastImportedAt] = useState(null);
+  const [status, setStatus] = useState('idle');
+  const [message, setMessage] = useState('');
+  const [percent, setPercent] = useState(0);
+  const [saved, setSaved] = useState(0);
+  const [totalDays, setTotalDays] = useState(0);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -35,6 +40,7 @@ export function ImportProvider({ children }) {
     setLastImportedAt(now);
     localStorage.setItem('ironcoach:last_import_at', String(now));
     window.dispatchEvent(new Event('ironcoach:imported'));
+    setStatus('done');
   };
 
   const startImport = async (file, mode) => {
@@ -43,11 +49,15 @@ export function ImportProvider({ children }) {
   };
 
   const cancelImport = () => {
-    // Placeholder for cancel logic
+    setStatus('idle');
+    setMessage('');
+    setPercent(0);
+    setSaved(0);
+    setTotalDays(0);
   };
 
   return (
-    <ImportContext.Provider value={{ lastImportedAt, markImportDone, startImport, cancelImport }}>
+    <ImportContext.Provider value={{ lastImportedAt, markImportDone, startImport, cancelImport, status, setStatus, message, setMessage, percent, setPercent, saved, setSaved, totalDays, setTotalDays }}>
       {children}
     </ImportContext.Provider>
   );
