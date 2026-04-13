@@ -9,7 +9,16 @@ import { useToast } from "@/components/ui/use-toast";
 function parseAppleHealthXML(xmlText) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, "text/xml");
+  
+  // Check for XML parse errors
+  if (doc.getElementsByTagName('parsererror').length > 0) {
+    throw new Error('Invalid XML file. Please ensure you uploaded the correct export.xml from Apple Health.');
+  }
+  
   const records = Array.from(doc.querySelectorAll("Record"));
+  if (records.length === 0) {
+    throw new Error('No health records found in XML file.');
+  }
 
   const metrics = {};
 
