@@ -40,7 +40,10 @@ export default function Recovery() {
       const [todayOnly, recent30, activitiesData] = await Promise.all([
         base44.entities.DailyMetrics.filter({ date: today, created_by: currentUser.email }),
         base44.entities.DailyMetrics.filter({ created_by: currentUser.email }, "-date", 30),
-        base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 30),
+        // 500 activities — matches Dashboard + Analytics so calculateFitnessMetrics
+        // produces the same TSB on every page. 30 was not enough history for the
+        // 42-day CTL EMA to converge.
+        base44.entities.Activity.filter({ created_by: currentUser.email }, "-date", 500),
       ]);
 
       // Merge today's row (may hold morning check-in with null Apple Health
