@@ -15,7 +15,7 @@ export default function RecoveryTab({ metrics }) {
     const window = arr.slice(Math.max(0, i - 13), i + 1).filter(d => d.hrv);
     const avg = window.reduce((s, d) => s + d.hrv, 0) / window.length;
     return {
-      date: moment(m.date).format("ddd MMM D"),
+      date: moment(m.date).format("MMM D"),
       hrv: m.hrv,
       avg14: parseFloat(avg.toFixed(1)),
     };
@@ -23,13 +23,13 @@ export default function RecoveryTab({ metrics }) {
 
   // Resting HR
   const rhrData = last90.filter(m => m.resting_hr).map(m => ({
-    date: moment(m.date).format("ddd MMM D"),
+    date: moment(m.date).format("MMM D"),
     rhr: m.resting_hr,
   }));
 
   // Sleep
   const sleepData = last90.filter(m => m.sleep_hours && m.sleep_hours > 0 && m.sleep_hours < 24).map(m => ({
-    date: moment(m.date).format("ddd MMM D"),
+    date: moment(m.date).format("MMM D"),
     fullDate: m.date,
     hours: parseFloat(m.sleep_hours.toFixed(1)),
     quality: m.sleep_quality || "good",
@@ -38,13 +38,13 @@ export default function RecoveryTab({ metrics }) {
 
   // Body Battery
   const bbData = last90.filter(m => m.body_battery).map(m => ({
-    date: moment(m.date).format("ddd MMM D"),
+    date: moment(m.date).format("MMM D"),
     bb: m.body_battery,
   }));
 
   // Readiness history
   const readinessData = last90.filter(m => m.readiness_score).map(m => ({
-    date: moment(m.date).format("ddd MMM D"),
+    date: moment(m.date).format("MMM D"),
     score: m.readiness_score,
   }));
 
