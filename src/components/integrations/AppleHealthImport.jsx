@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useImport } from "@/lib/ImportContext";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, CheckCircle2, AlertCircle, FileDown, Plus } from "lucide-react";
 import JSZip from "jszip";
@@ -253,6 +254,14 @@ function ImportStep4({ result, onReset }) {
   );
 }
 
+function pick(obj, keys) {
+  const result = {};
+  keys.forEach(key => {
+    if (key in obj) result[key] = obj[key];
+  });
+  return result;
+}
+
 export default function AppleHealthImport({ onImported }) {
   const { currentUser } = useAuth();
   const importCtx = useImport();
@@ -260,12 +269,14 @@ export default function AppleHealthImport({ onImported }) {
   const [step, setStep] = useState(1);
   const [selectedMode, setSelectedMode] = useState('smart');
 
+  const { markImportDone } = useImport();
+  
   const handleFile = async (file) => {
     if (!file) return;
     setStep(3);
     await importCtx.startImport(file, selectedMode);
     
-    // Update profile with import metadata after successful save
+    // Update profile and signal global refresh
     if (importCtx.status === 'done') {
       try {
         const profiles = await base44.entities.AthleteProfile.filter(
@@ -281,6 +292,8 @@ export default function AppleHealthImport({ onImported }) {
             apple_health_connected: true,
           });
         }
+        markImportDone();
+        toast.success('Import complete — pages refreshing');
       } catch (err) {
         console.error('Failed to update profile:', err);
       }

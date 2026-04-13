@@ -15,10 +15,6 @@
       "type": "number",
       "title": "Resting HR"
     },
-    "avg_hr": {
-      "type": "number",
-      "title": "Avg HR"
-    },
     "sleep_hours": {
       "type": "number",
       "title": "Sleep Hours"
@@ -57,25 +53,17 @@
       "type": "number",
       "title": "Respiratory Rate"
     },
-    "steps": {
+    "vo2_max": {
       "type": "number",
-      "title": "Steps"
+      "title": "VO2 Max"
+    },
+    "weight_kg": {
+      "type": "number",
+      "title": "Weight (kg)"
     },
     "active_calories": {
       "type": "number",
       "title": "Active Calories"
-    },
-    "resting_calories": {
-      "type": "number",
-      "title": "Resting Calories"
-    },
-    "walking_running_distance_km": {
-      "type": "number",
-      "title": "Walking/Running Distance (km)"
-    },
-    "vo2_max": {
-      "type": "number",
-      "title": "VO2 Max"
     },
     "readiness_score": {
       "type": "number",
@@ -92,10 +80,6 @@
     "tsb": {
       "type": "number",
       "title": "TSB (Form)"
-    },
-    "weight_kg": {
-      "type": "number",
-      "title": "Weight (kg)"
     },
     "mood": {
       "type": "string",

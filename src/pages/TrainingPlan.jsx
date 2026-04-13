@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { sportColors, sportIcons, formatDuration, phaseLabels } from "@/lib/sportUtils";
 import { ChevronLeft, ChevronRight, Loader2, X, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const INTENSITY_LABELS = { easy: "Easy", moderate: "Moderate", hard: "Hard", rac
 
 export default function TrainingPlan() {
   const { currentUser } = useAuth();
+  const { lastImportedAt } = useImport();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(moment().startOf("month"));
@@ -34,7 +36,7 @@ export default function TrainingPlan() {
     setLoading(false);
   }
 
-  useEffect(() => { if (!currentUser) return; load(); }, [currentUser]);
+  useEffect(() => { if (!currentUser) return; load(); }, [currentUser, lastImportedAt]);
 
   const days = useMemo(() => {
     const start = month.clone().startOf("month").startOf("isoWeek");

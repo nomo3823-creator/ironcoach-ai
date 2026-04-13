@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReadinessCard from "../components/analytics/ReadinessCard";
@@ -17,6 +18,7 @@ import { calculateReadiness } from "../lib/readinessEngine";
 
 export default function Analytics() {
   const { currentUser } = useAuth();
+  const { lastImportedAt } = useImport();
   const [metrics, setMetrics] = useState([]);
   const [activities, setActivities] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -36,7 +38,7 @@ export default function Analytics() {
       setLoading(false);
     }
     load();
-  }, [currentUser]);
+  }, [currentUser, lastImportedAt]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">

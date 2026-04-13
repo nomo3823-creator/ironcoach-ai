@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, RefreshCw, Link2, Link2Off, AlertCircle, Loader2, Upload } from "lucide-react";
@@ -10,6 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 export default function Integrations() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { markImportDone } = useImport();
   const [profile, setProfile] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -77,6 +79,7 @@ export default function Integrations() {
     try {
       const res = await base44.functions.invoke("stravaSync", {});
       setSyncResult(res.data);
+      markImportDone();
       toast({ title: `Synced ${res.data.synced} new activities from Strava` });
     } catch (e) {
       toast({ title: "Sync failed", description: e.message, variant: "destructive" });

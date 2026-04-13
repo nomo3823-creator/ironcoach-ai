@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 
 export default function Today() {
   const { currentUser } = useAuth();
+  const { lastImportedAt } = useImport();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [todayWorkout, setTodayWorkout] = useState(null);
@@ -21,7 +23,7 @@ export default function Today() {
   useEffect(() => {
     if (!currentUser) return;
     loadData();
-  }, [currentUser]);
+  }, [currentUser, lastImportedAt]);
 
   async function loadData() {
     try {

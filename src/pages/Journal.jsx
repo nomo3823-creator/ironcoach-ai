@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { useImport } from "@/lib/ImportContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import moment from "moment";
 
 export default function Journal() {
   const { currentUser } = useAuth();
+  const { lastImportedAt } = useImport();
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState([]);
   const [selectedTab, setSelectedTab] = useState("all");
@@ -17,7 +19,7 @@ export default function Journal() {
   useEffect(() => {
     if (!currentUser) return;
     loadEntries();
-  }, [currentUser]);
+  }, [currentUser, lastImportedAt]);
 
   async function loadEntries() {
     try {

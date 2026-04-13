@@ -88,15 +88,15 @@ function App() {
 
   return (
     <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <ImportProvider>
+      <ImportProvider>
+        <QueryClientProvider client={queryClientInstance}>
           <Router>
             <AuthenticatedApp />
           </Router>
           <ImportProgressPill />
-        </ImportProvider>
-        <Toaster />
-      </QueryClientProvider>
+          <Toaster />
+        </QueryClientProvider>
+      </ImportProvider>
     </AuthProvider>
   )
 }
