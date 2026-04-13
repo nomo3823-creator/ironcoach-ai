@@ -31,7 +31,13 @@ export default function LogMetrics() {
         return [k, v];
       })
     );
-    await base44.entities.DailyMetrics.create(data);
+    // Upsert: update existing entry for this date if it exists
+    const existing = await base44.entities.DailyMetrics.filter({ date: form.date });
+    if (existing?.[0]) {
+      await base44.entities.DailyMetrics.update(existing[0].id, data);
+    } else {
+      await base44.entities.DailyMetrics.create(data);
+    }
     setSaving(false);
     toast.success("Metrics logged");
   }

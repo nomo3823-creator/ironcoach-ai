@@ -14,7 +14,7 @@ export default function MorningBrief({ metrics, workout, profile }) {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: `You are IronCoach AI, an elite Ironman triathlon coach. Write a personalized morning brief in 3-4 sentences.
 
-Athlete: ${profile?.full_name || "Athlete"} | FTP: ${profile?.current_ftp || "?"}W | VO2max: ${profile?.vo2_max || "?"}
+Athlete: ${profile?.first_name || profile?.full_name || "Athlete"} | FTP: ${profile?.current_ftp || "?"}W | VO2max: ${profile?.vo2_max || "?"}
 Today's HRV: ${metrics?.hrv || "?"}ms | Resting HR: ${metrics?.resting_hr || "?"}bpm
 Sleep: ${metrics?.sleep_hours || "?"}h (${metrics?.sleep_quality || "?"} quality) | Body Battery: ${metrics?.body_battery || "?"}/100
 Readiness: ${metrics?.readiness_score || "?"}/100 | Mood: ${metrics?.mood || "?"}

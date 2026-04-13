@@ -14,7 +14,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    age: "", weight_kg: "", height_cm: "", sport_history: "",
+    first_name: "", age: "", weight_kg: "", height_cm: "", sport_history: "",
     current_ftp: "", css_per_100m: "", threshold_run_pace: "",
     vo2_max: "", resting_hr: "", max_hr: "", weekly_hours_available: "",
     experience_level: "intermediate",
@@ -27,7 +27,7 @@ export default function Settings() {
       const data = await base44.entities.AthleteProfile.list("-created_date", 1);
       if (data?.[0]) {
         setProfile(data[0]);
-        setForm({ ...form, ...data[0] });
+        setForm((prev) => ({ ...prev, ...data[0] }));
       }
       setLoading(false);
     }
@@ -115,6 +115,7 @@ export default function Settings() {
         <section>
           <h2 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Athlete Profile</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div><Label>First Name</Label><Input value={form.first_name || ""} onChange={(e) => setForm({...form,first_name:e.target.value})} placeholder="Alex" /></div>
             <div><Label>Age</Label><Input type="number" value={form.age || ""} onChange={(e) => setForm({...form,age:e.target.value})} placeholder="32" /></div>
             <div><Label>Weight (kg)</Label><Input type="number" value={form.weight_kg || ""} onChange={(e) => setForm({...form,weight_kg:e.target.value})} placeholder="72" /></div>
             <div><Label>Height (cm)</Label><Input type="number" value={form.height_cm || ""} onChange={(e) => setForm({...form,height_cm:e.target.value})} placeholder="178" /></div>

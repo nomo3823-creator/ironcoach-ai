@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Zap, Loader2, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Zap, Loader2, ChevronDown, ChevronUp, X, ClipboardList } from "lucide-react";
+import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import moment from "moment";
 
@@ -18,7 +19,7 @@ export default function CoachCheckin({ profile, metrics, workout }) {
       // Already done today — don't regenerate
       return;
     }
-    // Auto-generate on mount if metrics exist
+    // Auto-generate on mount only if metrics exist
     if (metrics) generate();
   }, [profile?.id, metrics?.date]);
 
@@ -36,7 +37,7 @@ export default function CoachCheckin({ profile, metrics, workout }) {
 
     const prompt = `You are IronCoach AI. Write a personalized morning check-in for this athlete. Be direct, reference specific numbers, never be generic. Max 4 sentences.
 
-Athlete: ${profile?.full_name || "Athlete"}
+Athlete: ${profile?.first_name || profile?.full_name || "Athlete"}
 Motivation: "${profile?.motivation_statement || "completing their Ironman"}"
 Today's HRV: ${metrics?.hrv || "?"}ms | Resting HR: ${metrics?.resting_hr || "?"}bpm
 Sleep: ${metrics?.sleep_hours || "?"}h (${metrics?.sleep_quality || "?"}) | Body Battery: ${metrics?.body_battery || "?"}/100
@@ -94,6 +95,11 @@ Reference a specific number, make an adjustment recommendation if needed, and ti
             <ReactMarkdown className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none [&_p]:text-foreground [&_p]:my-0.5 [&_strong]:text-primary">
               {checkin}
             </ReactMarkdown>
+          ) : !metrics ? (
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <ClipboardList className="h-4 w-4 shrink-0" />
+              <span>Log today's metrics to get your personalized check-in. <Link to="/log" className="text-primary underline underline-offset-2">Log now →</Link></span>
+            </div>
           ) : null}
         </div>
       )}

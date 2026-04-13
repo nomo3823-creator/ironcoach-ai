@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Loader2, Sparkles } from "lucide-react";
+import { X, Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import moment from "moment";
 
 export default function GeneratePlanModal({ onClose }) {
@@ -12,6 +12,7 @@ export default function GeneratePlanModal({ onClose }) {
   const [distance, setDistance] = useState("140.6");
   const [hoursPerWeek, setHoursPerWeek] = useState("10");
   const [level, setLevel] = useState("intermediate");
+  const [clearExisting, setClearExisting] = useState(true);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
 
@@ -22,6 +23,14 @@ export default function GeneratePlanModal({ onClose }) {
 
     const weeksToRace = moment(raceDate).diff(moment(), "weeks");
     const profile = (await base44.entities.AthleteProfile.list("-created_date", 1))?.[0];
+
+    // Clear existing planned/modified workouts if requested
+    if (clearExisting) {
+      setProgress("Clearing existing plan...");
+      const existing = await base44.entities.PlannedWorkout.list("date", 1000);
+      const toDelete = (existing || []).filter((w) => w.status === "planned" || w.status === "modified");
+      await Promise.all(toDelete.map((w) => base44.entities.PlannedWorkout.delete(w.id)));
+    }
 
     setProgress("Building your periodized plan...");
 
@@ -125,6 +134,19 @@ Return JSON array (max 80 workouts):`,
                   <SelectItem value="elite">Elite / Competitive</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div
+              onClick={() => setClearExisting(!clearExisting)}
+              className="flex items-start gap-3 p-3 rounded-lg border border-border bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors"
+            >
+              <AlertTriangle className={`h-4 w-4 mt-0.5 shrink-0 ${clearExisting ? "text-accent" : "text-muted-foreground"}`} />
+              <div>
+                <p className="text-sm font-medium text-foreground">Replace existing plan</p>
+                <p className="text-xs text-muted-foreground">Delete all planned &amp; modified workouts before generating. Uncheck to append instead.</p>
+              </div>
+              <div className={`ml-auto h-4 w-4 rounded border shrink-0 mt-0.5 flex items-center justify-center ${clearExisting ? "bg-primary border-primary" : "border-border"}`}>
+                {clearExisting && <span className="text-primary-foreground text-[10px] font-bold">✓</span>}
+              </div>
             </div>
             <Button type="submit" className="w-full">
               <Sparkles className="h-4 w-4 mr-2" /> Generate Plan

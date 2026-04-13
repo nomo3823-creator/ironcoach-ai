@@ -10,6 +10,7 @@ import RecentActivities from "../components/dashboard/RecentActivities";
 import CoachCheckin from "../components/dashboard/CoachCheckin";
 import { checkHrvDrop, checkPoorSleepStreak, downgradeWorkout } from "@/lib/planUtils";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import moment from "moment";
 
 function MetricRow({ label, value, sub }) {
@@ -170,10 +171,23 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
       if (shouldDowngrade) {
         const reason = `HRV is ${todayM.hrv}ms — ${dropPct}% below your 14-day average of ${rollingAvg}ms. Downgraded today's session to recovery to protect your adaptation.`;
         await downgradeWorkout(todayW, reason, "hrv_drop", `HRV: ${todayM.hrv}ms (avg: ${rollingAvg}ms)`);
+        toast("Plan adjusted — HRV drop detected", {
+          description: `Today's session reduced to recovery (HRV ${dropPct}% below 14-day avg). Check the Plan Change Log for details.`,
+          duration: 8000,
+        });
+        // Refresh the workout so the UI shows the updated state
+        const updated = await base44.entities.PlannedWorkout.filter({ date: today });
+        setTodayWorkout(updated?.[0] || null);
       } else {
         const sleepStreak = checkPoorSleepStreak(allMetrics || []);
         if (sleepStreak >= 3) {
           await downgradeWorkout(todayW, `${sleepStreak} consecutive nights of poor/fair sleep detected. Reducing today's load to support recovery.`, "poor_sleep", `Sleep streak: ${sleepStreak} nights`);
+          toast("Plan adjusted — poor sleep streak", {
+            description: `${sleepStreak} nights of poor/fair sleep. Today's session reduced to recovery.`,
+            duration: 8000,
+          });
+          const updated = await base44.entities.PlannedWorkout.filter({ date: today });
+          setTodayWorkout(updated?.[0] || null);
         }
       }
     }
@@ -209,7 +223,7 @@ Assess last week and return JSON adjustments for next week. If compliance < 70% 
             <h2 className="text-xs uppercase tracking-widest font-semibold text-muted-foreground mb-3">Today's Session</h2>
             <TodayWorkoutCard workout={todayWorkout} onRefresh={load} />
           </div>
-          <MorningBrief metrics={todayMetrics} workout={todayWorkout} profile={currentUser} />
+          <MorningBrief metrics={todayMetrics} workout={todayWorkout} profile={profile} />
           <RecentActivities activities={activities} />
         </div>
 

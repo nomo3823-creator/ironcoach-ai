@@ -65,6 +65,7 @@ export default function CoachChat() {
   const [starters, setStarters] = useState([]);
   const [loadingStarters, setLoadingStarters] = useState(true);
   const [athleteCtx, setAthleteCtx] = useState(null);
+  const [messageSentCount, setMessageSentCount] = useState(0);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -140,8 +141,9 @@ export default function CoachChat() {
       conv = await newConv();
     }
 
-    // Load full athlete context and prepend to user message
-    const ctx = athleteCtx || await loadAthleteContext();
+    // Always load fresh athlete context so metrics/plan are current
+    const ctx = await loadAthleteContext();
+    setAthleteCtx(ctx);
     const contextStr = buildContextString(ctx.profile, ctx.metrics, ctx.workout, ctx.races);
     await base44.agents.addMessage(conv, { role: "user", content: `${contextStr}
 
@@ -149,11 +151,14 @@ Athlete message: ${msg}` });
 
     setSending(false);
 
+    const newCount = messageSentCount + 1;
+    setMessageSentCount(newCount);
+
     // Background: extract insights and trigger plan modifications if needed
-    extractInsightsInBackground(msg, conv);
+    extractInsightsInBackground(msg, conv, newCount);
   }
 
-  async function extractInsightsInBackground(userMessage, conv) {
+  async function extractInsightsInBackground(userMessage, conv, sentCount) {
     const lm = userMessage.toLowerCase();
     const injuryKeywords = ["pain", "hurt", "sore", "knee", "hamstring", "shoulder", "ankle", "injury"];
     const fatigueKeywords = ["exhausted", "burnt out", "tired", "struggling", "overwhelmed", "burned out"];
@@ -248,6 +253,37 @@ Athlete message: ${msg}` });
       const followUp = `I've adjusted your upcoming sessions based on what you told me. Based on ${signalType}, I've made these changes:\n\n${changesLog.map(c => `• ${c}`).join("\n")}\n\nYour body is telling you something — let's respect that and protect your long-term fitness. We can rebuild intensity once you're feeling better.`;
       await base44.agents.addMessage(conv, { role: "assistant", content: followUp });
     }
+
+    // Every 5 messages, extract general coaching insights from the conversation
+    if (sentCount % 5 === 0) {
+      try {
+        const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+        if (!profiles?.[0]) return;
+        const convData = await base44.agents.getConversation(conv.id);
+        const recentMessages = (convData.messages || [])
+          .filter((m) => m.role !== "system")
+          .slice(-10)
+          .map((m) => `${m.role}: ${typeof m.content === "string" ? m.content.substring(0, 300) : ""}`)
+          .join("\n");
+        const existing = profiles[0].extracted_insights || "";
+        const updated = await base44.integrations.Core.InvokeLLM({
+          prompt: `You are reviewing a coach-athlete conversation to extract durable insights about this athlete.
+
+Recent conversation:
+${recentMessages}
+
+Existing insights already saved:
+${existing || "None yet."}
+
+Extract any NEW coaching-relevant facts: preferences (e.g. morning vs evening training, prefers solo vs group), patterns (responds well to high volume, struggles with swim technique), goals, mental state, lifestyle constraints. Only add genuinely new, non-redundant information. If nothing new, return the existing insights unchanged. Return the complete updated insights string (2-5 sentences max).`,
+        });
+        if (updated && updated !== existing) {
+          await base44.entities.AthleteProfile.update(profiles[0].id, { extracted_insights: updated });
+        }
+      } catch {
+        // Non-critical — don't let insight extraction errors surface to user
+      }
+    }
   }
 
   const visibleMessages = messages.filter((m) => m.role !== "system");
@@ -301,7 +337,7 @@ Athlete message: ${msg}` });
               ) : starters.map((q) => (
                 <button
                   key={q}
-                  onClick={() => { setInput(q); newConv().then((c) => { setActive(c); }); }}
+                  onClick={() => send(q)}
                   className="p-3 rounded-xl border border-border bg-card text-sm text-left text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
                 >
                   {q}

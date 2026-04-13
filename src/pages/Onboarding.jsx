@@ -31,6 +31,17 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
 
+  // Redirect to dashboard if already onboarded
+  useEffect(() => {
+    async function checkOnboarding() {
+      const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
+      if (profiles?.[0]?.onboarding_complete) {
+        navigate("/");
+      }
+    }
+    checkOnboarding();
+  }, []);
+
   // Start with welcome message
   useEffect(() => {
     setMessages([
@@ -112,6 +123,7 @@ export default function Onboarding() {
     // Save or update profile
     const profiles = await base44.entities.AthleteProfile.list("-created_date", 1);
     const profileData = {
+      first_name: extracted.first_name,
       weekly_hours_available: extracted.weekly_hours_available,
       current_ftp: extracted.current_ftp,
       css_per_100m: extracted.css_per_100m,

@@ -47,6 +47,7 @@ export async function downgradeWorkout(workout, reason, changeType, signalValue)
     intensity: "easy",
     duration_minutes: newDuration,
     ai_adjustment_reason: reason,
+    status: "modified",
   });
 
   await logPlanChange({
